@@ -176,6 +176,81 @@ Header: X-MCC-Timestamp: <unix_timestamp>
 
 Standard string comparison (`===` or `==`) can leak timing information. An attacker could measure response times to gradually guess the correct signature. Constant-time comparison functions (like `crypto.timingSafeEqual` in Node.js or `hmac.compare_digest` in Python) always take the same amount of time regardless of where strings differ.
 
+### Verification Examples
+
+**Node.js:**
+
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhook(rawBody, signature, timestamp, secret) {
+  if (Math.abs(Math.floor(Date.now() / 1000) - parseInt(timestamp)) > 300) {
+    return false; // Replay protection: reject requests older than 5 minutes
+  }
+  const payload = timestamp + '.' + rawBody;
+  const expected = 'sha256=' + crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
+```
+
+**Python:**
+
+```python
+import hmac, hashlib, time
+
+def verify_webhook(raw_body, signature, timestamp, secret):
+    if abs(int(time.time()) - int(timestamp)) > 300:
+        return False
+    payload = f"{timestamp}.{raw_body}"
+    expected = 'sha256=' + hmac.new(
+        secret.encode(), payload.encode(), hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(signature, expected)
+```
+
+**PHP:**
+
+```php
+function verifyWebhook($rawBody, $signature, $timestamp, $secret) {
+    if (abs(time() - intval($timestamp)) > 300) return false;
+    $payload = $timestamp . '.' . $rawBody;
+    $expected = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+    return hash_equals($expected, $signature);
+}
+```
+
+**Ruby:**
+
+```ruby
+require 'openssl'
+
+def verify_webhook(raw_body, signature, timestamp, secret)
+  return false if (Time.now.to_i - timestamp.to_i).abs > 300
+  payload = "#{timestamp}.#{raw_body}"
+  expected = 'sha256=' + OpenSSL::HMAC.hexdigest('SHA256', secret, payload)
+  Rack::Utils.secure_compare(signature, expected)
+end
+```
+
+**Go:**
+
+```go
+func verifyWebhook(rawBody []byte, signature, timestamp, secret string) bool {
+    ts, _ := strconv.ParseInt(timestamp, 10, 64)
+    if math.Abs(float64(time.Now().Unix()-ts)) > 300 {
+        return false
+    }
+    payload := timestamp + "." + string(rawBody)
+    mac := hmac.New(sha256.New, []byte(secret))
+    mac.Write([]byte(payload))
+    expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+    return hmac.Equal([]byte(signature), []byte(expected))
+}
+```
+
 ### Webhook Secret Management
 
 - The secret is generated when you create a webhook endpoint
