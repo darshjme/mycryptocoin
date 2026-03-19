@@ -193,7 +193,8 @@ async function runReconciliation(job: Job<ReconciliationJobData>): Promise<void>
 
           // Merchant deposit wallets should have been swept;
           // any remaining balance > dust is a discrepancy.
-          const remaining = parseFloat(onChainBalance);
+          const remainingDec = new Decimal(onChainBalance);
+          const remaining = remainingDec.toNumber();
           const dustThreshold = 0.0001;
 
           if (remaining > dustThreshold) {
@@ -349,12 +350,12 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function calculateTotalDiscrepancyUsd(discrepancies: BalanceDiscrepancy[]): Promise<number> {
-  let total = 0;
+  let total = new Decimal(0);
   for (const d of discrepancies) {
     const rate = await getExchangeRate(d.chain);
-    total += Math.abs(parseFloat(d.difference)) * rate;
+    total = total.add(new Decimal(d.difference).abs().mul(rate));
   }
-  return Math.round(total * 100) / 100;
+  return Math.round(total.toNumber() * 100) / 100;
 }
 
 // ---------------------------------------------------------------------------

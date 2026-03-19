@@ -234,9 +234,14 @@ export async function batchRotateEncryptedFields(
  * The original key cannot be recovered — only compared.
  */
 export function hashApiKey(apiKey: string): string {
-  const pepper = process.env.API_KEY_PEPPER || 'mycryptocoin-default-pepper';
+  const pepper = process.env.API_KEY_PEPPER;
+  if (!pepper || pepper === 'mycryptocoin-default-pepper') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('API_KEY_PEPPER must be set in production — do not use the default pepper');
+    }
+  }
   return crypto
-    .createHmac('sha256', pepper)
+    .createHmac('sha256', pepper || 'mycryptocoin-default-pepper')
     .update(apiKey)
     .digest('hex');
 }

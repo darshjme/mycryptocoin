@@ -6,6 +6,7 @@ import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { applySecurityMiddleware } from './middleware/security';
 import { advancedRateLimiter } from './middleware/advancedRateLimiter';
+import { timeoutMiddleware } from './middleware/timeout';
 import { createHealthRouter } from './config/health';
 import { logger } from './utils/logger';
 
@@ -19,6 +20,9 @@ applySecurityMiddleware(app);
 
 // ---------- Compression ----------
 app.use(compression());
+
+// ---------- Request Timeout (must be early to cover all routes) ----------
+app.use(timeoutMiddleware());
 
 // ---------- Request Logging ----------
 const morganStream = {

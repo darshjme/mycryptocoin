@@ -109,16 +109,18 @@ const BURST_WINDOW_LUA = `
 // ---------------------------------------------------------------------------
 
 function extractIdentifier(req: Request): { id: string; tier: RateLimitTier } {
-  // Check for API key in header
-  const apiKey = req.headers['x-api-key'] as string | undefined;
-  if (apiKey && (req as any).apiKeyData) {
+  // Check for API key in header — key on MERCHANT ID, not the API key itself.
+  // This prevents bypass by rotating API keys: all keys for the same merchant
+  // share one rate-limit bucket.
+  const apiKeyData = (req as any).apiKeyData;
+  if (apiKeyData?.merchantId) {
     return {
-      id: `apikey:${apiKey.slice(0, 8)}`, // Use prefix for privacy
-      tier: ((req as any).apiKeyData.tier as RateLimitTier) || RateLimitTier.FREE,
+      id: `merchant:${apiKeyData.merchantId}`,
+      tier: (apiKeyData.tier as RateLimitTier) || RateLimitTier.FREE,
     };
   }
 
-  // Check for authenticated user
+  // Check for authenticated user (JWT session)
   if ((req as any).user?.id) {
     const userTier = (req as any).user.tier || RateLimitTier.FREE;
     return {
@@ -127,8 +129,8 @@ function extractIdentifier(req: Request): { id: string; tier: RateLimitTier } {
     };
   }
 
-  // Fallback to IP
-  const ip =
+  // Fallback to IP — use req.ip which respects trust proxy setting
+  const ip = req.ip ||
     (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
     req.socket.remoteAddress ||
     'unknown';
@@ -259,11 +261,27 @@ export function advancedRateLimiter(options: RateLimiterOptions = {}) {
 
       next();
     } catch (err: any) {
-      // If Redis is down, allow the request through (fail open)
-      logger.error('Rate limiter error — allowing request', {
+      // SECURITY: If Redis is down, fail CLOSED for sensitive endpoints
+      // to prevent brute-force during outages. Non-critical paths still fail open.
+      logger.error('Rate limiter error', {
         error: err.message,
         identifier: id,
+        path: req.path,
       });
+
+      const sensitivePaths = ['/auth/', '/login', '/register', '/reset-password', '/verify', '/otp'];
+      const isSensitive = sensitivePaths.some((p) => req.path.includes(p));
+      if (isSensitive) {
+        res.status(503).json({
+          success: false,
+          error: {
+            code: 'SERVICE_UNAVAILABLE',
+            message: 'Service temporarily unavailable. Please try again shortly.',
+          },
+        });
+        return;
+      }
+
       next();
     }
   };

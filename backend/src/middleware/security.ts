@@ -245,8 +245,10 @@ export function applySecurityMiddleware(app: Express): void {
   );
 
   // ---- Request body size limits -------------------------------------------
-  app.use(require('express').json({ limit: '10mb' }));
-  app.use(require('express').urlencoded({ extended: true, limit: '10mb' }));
+  // 1MB is sufficient for payment/merchant JSON payloads.
+  // 10MB opens the door to JSON DoS (large payload parsing blocks event loop).
+  app.use(require('express').json({ limit: '1mb' }));
+  app.use(require('express').urlencoded({ extended: true, limit: '1mb' }));
 
   // ---- Cookie parsing (no external dependency) ---------------------------
   app.use((req: Request, _res: Response, next: NextFunction) => {

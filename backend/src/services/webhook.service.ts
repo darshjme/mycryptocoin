@@ -187,7 +187,12 @@ export class WebhookService {
     attempt: number;
   }): Promise<void> {
     const payloadStr = JSON.stringify(delivery.payload);
-    const signature = generateHmacSignature(payloadStr, delivery.secret);
+    // SECURITY: Include timestamp in signed content to prevent replay attacks.
+    // Merchants should verify: HMAC(timestamp + "." + body) and reject if
+    // timestamp is older than 5 minutes.
+    const timestamp = delivery.payload.timestamp;
+    const signedContent = `${timestamp}.${payloadStr}`;
+    const signature = generateHmacSignature(signedContent, delivery.secret);
 
     try {
       const controller = new AbortController();

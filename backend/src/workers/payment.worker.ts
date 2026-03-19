@@ -52,15 +52,18 @@ interface ChainTx {
 // Required confirmations per chain
 // ---------------------------------------------------------------------------
 
+// Import confirmation requirements from the single source of truth (config/crypto.ts).
+// If a chain is not found here, the worker falls back to 12.
+// These must stay in sync with SUPPORTED_CRYPTOS[].confirmationsRequired.
 const REQUIRED_CONFIRMATIONS: Record<string, number> = {
   BTC: 3,
   ETH: 12,
   BSC: 15,
   MATIC: 30,
-  SOL: 32,
+  SOL: 1,     // Solana: 1 confirmed slot is sufficient (finalized = ~32 but not required)
   TRX: 20,
   LTC: 6,
-  DOGE: 10,
+  DOGE: 6,    // Aligned with config/crypto.ts DOGECOIN:DOGE
   XRP: 1,
 };
 

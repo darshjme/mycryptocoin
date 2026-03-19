@@ -5,8 +5,14 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import path from "path";
+import { logger } from "../utils/logger";
 
 const sessions = new Map<string, WASocket>();
+const reconnectAttempts = new Map<string, number>();
+
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BASE_RECONNECT_DELAY_MS = 2000;
+const MAX_RECONNECT_DELAY_MS = 60000;
 
 export async function createWhatsAppSession(
   merchantId: string,
@@ -19,6 +25,8 @@ export async function createWhatsAppSession(
     auth: state,
     printQRInTerminal: true,
     browser: ["MyCryptoCoin", "Server", "1.0.0"],
+    connectTimeoutMs: 60000,
+    keepAliveIntervalMs: 30000,
   });
 
   sock.ev.on("creds.update", saveCreds);
@@ -27,18 +35,39 @@ export async function createWhatsAppSession(
     const { connection, lastDisconnect } = update;
 
     if (connection === "close") {
-      const shouldReconnect =
-        (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+      const statusCode =
+        (lastDisconnect?.error as Boom)?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
       if (shouldReconnect) {
-        console.log(`[WhatsApp] Reconnecting session: ${merchantId}`);
-        createWhatsAppSession(merchantId, sessionDir);
+        const attempts = reconnectAttempts.get(merchantId) || 0;
+        if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+          logger.error(
+            `[WhatsApp] Max reconnect attempts reached for session: ${merchantId}`
+          );
+          sessions.delete(merchantId);
+          reconnectAttempts.delete(merchantId);
+          return;
+        }
+
+        const delay = Math.min(
+          BASE_RECONNECT_DELAY_MS * Math.pow(2, attempts),
+          MAX_RECONNECT_DELAY_MS
+        );
+        reconnectAttempts.set(merchantId, attempts + 1);
+
+        logger.info(
+          `[WhatsApp] Reconnecting session ${merchantId} in ${delay}ms (attempt ${attempts + 1}/${MAX_RECONNECT_ATTEMPTS})`
+        );
+        setTimeout(() => createWhatsAppSession(merchantId, sessionDir), delay);
       } else {
-        console.log(`[WhatsApp] Session logged out: ${merchantId}`);
+        logger.info(`[WhatsApp] Session logged out: ${merchantId}`);
         sessions.delete(merchantId);
+        reconnectAttempts.delete(merchantId);
       }
     } else if (connection === "open") {
-      console.log(`[WhatsApp] Session connected: ${merchantId}`);
+      logger.info(`[WhatsApp] Session connected: ${merchantId}`);
+      reconnectAttempts.delete(merchantId);
     }
   });
 
@@ -55,14 +84,20 @@ export async function sendPaymentNotification(
     token: string;
     status: string;
   }
-): Promise<void> {
+): Promise<boolean> {
   const sock = sessions.get(merchantId);
   if (!sock) {
-    console.warn(`[WhatsApp] No active session for merchant: ${merchantId}`);
-    return;
+    logger.warn(`[WhatsApp] No active session for merchant: ${merchantId}`);
+    return false;
   }
 
-  const jid = `${phoneNumber.replace(/[^0-9]/g, "")}@s.whatsapp.net`;
+  const cleaned = phoneNumber.replace(/[^0-9]/g, "");
+  if (!cleaned || cleaned.length < 7 || cleaned.length > 15) {
+    logger.warn(`[WhatsApp] Invalid phone number format for merchant: ${merchantId}`);
+    return false;
+  }
+
+  const jid = `${cleaned}@s.whatsapp.net`;
 
   const message = [
     `*MyCryptoCoin Payment Update*`,
@@ -74,13 +109,22 @@ export async function sendPaymentNotification(
     `View details: https://dashboard.mycrypto.co.in/payments/${paymentData.paymentId}`,
   ].join("\n");
 
-  await sock.sendMessage(jid, { text: message });
+  try {
+    await sock.sendMessage(jid, { text: message });
+    return true;
+  } catch (error) {
+    logger.error(`[WhatsApp] Failed to send payment notification`, {
+      merchantId,
+      error: (error as Error).message,
+    });
+    return false;
+  }
 }
 
 export function getSession(merchantId: string): WASocket | undefined {
   return sessions.get(merchantId);
 }
 
-export function getAllSessions(): Map<string, WASocket> {
-  return sessions;
+export function getActiveSessionCount(): number {
+  return sessions.size;
 }

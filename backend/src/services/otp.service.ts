@@ -77,11 +77,14 @@ export class OTPService {
       throw new OTPError('OTP has expired or was not generated');
     }
 
-    // Timing-safe comparison
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(otp),
-      Buffer.from(storedOTP),
-    );
+    // Timing-safe comparison.
+    // SECURITY: timingSafeEqual throws if buffers differ in length.
+    // Guard against that to prevent DoS via malformed OTP input.
+    const otpBuf = Buffer.from(otp);
+    const storedBuf = Buffer.from(storedOTP);
+    const isValid =
+      otpBuf.length === storedBuf.length &&
+      crypto.timingSafeEqual(otpBuf, storedBuf);
 
     if (isValid) {
       // Delete OTP after successful verification
