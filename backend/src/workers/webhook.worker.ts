@@ -258,18 +258,22 @@ async function logWebhookAttempt(
   attempt: WebhookAttempt,
 ): Promise<void> {
   try {
-    await prisma.webhookLog.create({
+    await prisma.webhookDelivery.create({
       data: {
-        merchantId: jobData.merchantId,
+        webhookId: jobData.webhookId || jobData.merchantId, // Best-effort mapping
         event: jobData.event,
-        url: attempt.url,
-        attemptNumber: attempt.attemptNumber,
-        statusCode: attempt.statusCode,
-        responseBody: attempt.responseBody?.slice(0, 1_000),
+        payload: {
+          url: attempt.url,
+          merchantId: jobData.merchantId,
+          paymentId: jobData.paymentId || null,
+          withdrawalId: jobData.withdrawalId || null,
+          responseBody: attempt.responseBody?.slice(0, 1_000),
+          durationMs: attempt.durationMs,
+        },
+        statusCode: attempt.statusCode || 0,
+        success: (attempt.statusCode || 0) >= 200 && (attempt.statusCode || 0) < 300,
+        attempt: attempt.attemptNumber,
         error: attempt.error,
-        durationMs: attempt.durationMs,
-        paymentId: jobData.paymentId || null,
-        withdrawalId: jobData.withdrawalId || null,
       },
     });
   } catch (dbErr: any) {

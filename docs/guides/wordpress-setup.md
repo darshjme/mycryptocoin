@@ -122,7 +122,7 @@ If automatic registration fails:
 3. Click **Add Webhook**
 4. Enter:
    - **URL:** `https://yoursite.com/?wc-api=mycryptocoin_webhook`
-   - **Events:** `payment.confirming`, `payment.confirmed`, `payment.settled`, `payment.failed`, `payment.expired`
+   - **Events:** `payment.confirming`, `payment.confirmed`, `payment.completed`, `payment.failed`, `payment.expired`
 5. Copy the webhook secret and paste it into the plugin settings
 
 ---

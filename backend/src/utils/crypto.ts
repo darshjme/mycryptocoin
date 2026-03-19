@@ -1,16 +1,19 @@
-import { CryptoSymbol, SUPPORTED_CRYPTOS } from '../config/crypto';
+import { CryptoNetwork, TokenSymbol } from '@mycryptocoin/shared';
+import { cryptoKey, SUPPORTED_CRYPTOS, type CryptoKey } from '../config/crypto';
 import { Decimal } from '@prisma/client/runtime/library';
 
 /**
  * Validate a cryptocurrency address against its expected format.
+ * Uses network-level regex (addresses are network-specific, not token-specific).
  */
 export function validateCryptoAddress(
   address: string,
-  symbol: CryptoSymbol,
+  network: CryptoNetwork,
 ): boolean {
-  const config = SUPPORTED_CRYPTOS[symbol];
-  if (!config) return false;
-  return config.addressRegex.test(address);
+  // Find any config for this network to get the address regex
+  const configs = Object.values(SUPPORTED_CRYPTOS).filter(c => c.network === network);
+  if (configs.length === 0) return false;
+  return configs[0].addressRegex.test(address);
 }
 
 /**
@@ -45,9 +48,11 @@ export function toSmallestUnit(
  */
 export function formatCryptoAmount(
   amount: string | Decimal,
-  symbol: CryptoSymbol,
+  network: CryptoNetwork,
+  token: TokenSymbol,
 ): string {
-  const config = SUPPORTED_CRYPTOS[symbol];
+  const key = cryptoKey(network, token);
+  const config = SUPPORTED_CRYPTOS[key];
   const value = new Decimal(amount.toString());
   return value.toFixed(config.decimals);
 }
@@ -68,32 +73,32 @@ export function formatDisplayAmount(
 /**
  * Get the smallest unit name for a cryptocurrency.
  */
-export function getSmallestUnitName(symbol: CryptoSymbol): string {
-  const unitNames: Record<CryptoSymbol, string> = {
-    [CryptoSymbol.BTC]: 'satoshi',
-    [CryptoSymbol.ETH]: 'wei',
-    [CryptoSymbol.USDT_ERC20]: 'micro-USDT',
-    [CryptoSymbol.USDT_TRC20]: 'micro-USDT',
-    [CryptoSymbol.BNB]: 'jager',
-    [CryptoSymbol.SOL]: 'lamport',
-    [CryptoSymbol.MATIC]: 'wei',
-    [CryptoSymbol.LTC]: 'litoshi',
-    [CryptoSymbol.DOGE]: 'koinu',
-    [CryptoSymbol.XRP]: 'drop',
+export function getSmallestUnitName(token: TokenSymbol): string {
+  const unitNames: Record<string, string> = {
+    [TokenSymbol.BTC]: 'satoshi',
+    [TokenSymbol.ETH]: 'wei',
+    [TokenSymbol.USDT]: 'micro-USDT',
+    [TokenSymbol.USDC]: 'micro-USDC',
+    [TokenSymbol.BNB]: 'jager',
+    [TokenSymbol.SOL]: 'lamport',
+    [TokenSymbol.LTC]: 'litoshi',
+    [TokenSymbol.TRX]: 'sun',
   };
-  return unitNames[symbol] || 'unit';
+  return unitNames[token] || 'unit';
 }
 
 /**
- * Check if an amount meets the minimum requirement for a given crypto.
+ * Check if an amount meets the minimum deposit requirement for a given crypto.
  */
 export function meetsMinimumAmount(
   amount: string | Decimal,
-  symbol: CryptoSymbol,
+  network: CryptoNetwork,
+  token: TokenSymbol,
 ): boolean {
-  const config = SUPPORTED_CRYPTOS[symbol];
+  const key = cryptoKey(network, token);
+  const config = SUPPORTED_CRYPTOS[key];
   const value = new Decimal(amount.toString());
-  const minimum = new Decimal(config.minAmount);
+  const minimum = new Decimal(config.minDeposit);
   return value.gte(minimum);
 }
 
@@ -110,27 +115,4 @@ export function compareAmounts(
   if (valA.lt(valB)) return -1;
   if (valA.gt(valB)) return 1;
   return 0;
-}
-
-/**
- * Normalize a crypto symbol input to a CryptoSymbol enum value.
- */
-export function normalizeCryptoSymbol(input: string): CryptoSymbol | null {
-  const upper = input.toUpperCase().replace('-', '_');
-  if (upper in CryptoSymbol) {
-    return upper as CryptoSymbol;
-  }
-  // Handle common aliases
-  const aliases: Record<string, CryptoSymbol> = {
-    BITCOIN: CryptoSymbol.BTC,
-    ETHEREUM: CryptoSymbol.ETH,
-    TETHER: CryptoSymbol.USDT_ERC20,
-    USDT: CryptoSymbol.USDT_ERC20,
-    SOLANA: CryptoSymbol.SOL,
-    POLYGON: CryptoSymbol.MATIC,
-    LITECOIN: CryptoSymbol.LTC,
-    DOGECOIN: CryptoSymbol.DOGE,
-    RIPPLE: CryptoSymbol.XRP,
-  };
-  return aliases[upper] || null;
 }

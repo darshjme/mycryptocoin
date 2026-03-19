@@ -1,5 +1,28 @@
 import { CryptoNetwork, TokenSymbol } from '@mycryptocoin/shared';
 
+// Re-export shared types
+export { CryptoNetwork, TokenSymbol };
+
+/**
+ * Backward-compatible CryptoSymbol enum.
+ * Legacy code (crypto.service, wallet.service, etc.) uses CryptoSymbol.BTC style.
+ * Maps to CryptoKey internally.
+ */
+export enum CryptoSymbol {
+  BTC = 'BITCOIN:BTC',
+  ETH = 'ETHEREUM:ETH',
+  USDT_ERC20 = 'ETHEREUM:USDT',
+  USDC_ERC20 = 'ETHEREUM:USDC',
+  USDT_TRC20 = 'TRON:USDT',
+  TRX = 'TRON:TRX',
+  BNB = 'BSC:BNB',
+  SOL = 'SOLANA:SOL',
+  MATIC = 'POLYGON:MATIC',
+  LTC = 'LITECOIN:LTC',
+  DOGE = 'DOGECOIN:DOGE',
+  XRP = 'XRPL:XRP',
+}
+
 export interface CryptoConfig {
   network: CryptoNetwork;
   token: TokenSymbol;
@@ -38,7 +61,7 @@ export function cryptoKey(network: CryptoNetwork, token: TokenSymbol): CryptoKey
   return `${network}:${token}` as CryptoKey;
 }
 
-export const SUPPORTED_CRYPTOS: Record<CryptoKey, CryptoConfig> = {
+export const SUPPORTED_CRYPTOS: Record<string, CryptoConfig> = {
   'BITCOIN:BTC': {
     network: CryptoNetwork.BITCOIN,
     token: TokenSymbol.BTC,

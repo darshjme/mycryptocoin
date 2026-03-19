@@ -1,8 +1,13 @@
 'use client';
 
 import React from 'react';
+import type { TokenSymbol } from '@mycryptocoin/shared';
 
-type CryptoSymbol = 'BTC' | 'ETH' | 'USDT' | 'BNB' | 'SOL' | 'XRP' | 'DOGE' | 'ADA' | 'MATIC' | 'LTC' | string;
+/**
+ * Accepts any TokenSymbol from the shared package, plus a fallback string
+ * for forward-compatibility.
+ */
+type CryptoSymbol = TokenSymbol | string;
 
 interface CryptoIconProps {
   symbol: CryptoSymbol;
@@ -17,16 +22,18 @@ const sizeMap = {
   xl: 'w-12 h-12 text-base',
 };
 
+/**
+ * Color map aligned with shared TokenSymbol enum:
+ * BTC, ETH, SOL, LTC, USDT, USDC, TRX, BNB
+ */
 const colorMap: Record<string, { bg: string; text: string; gradient: string }> = {
   BTC: { bg: 'bg-orange-500/15', text: 'text-orange-400', gradient: 'from-orange-500 to-amber-500' },
   ETH: { bg: 'bg-blue-500/15', text: 'text-blue-400', gradient: 'from-blue-500 to-indigo-500' },
   USDT: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', gradient: 'from-emerald-500 to-teal-500' },
+  USDC: { bg: 'bg-blue-500/15', text: 'text-blue-300', gradient: 'from-blue-400 to-cyan-500' },
   BNB: { bg: 'bg-yellow-500/15', text: 'text-yellow-400', gradient: 'from-yellow-500 to-amber-500' },
   SOL: { bg: 'bg-purple-500/15', text: 'text-purple-400', gradient: 'from-purple-500 to-fuchsia-500' },
-  XRP: { bg: 'bg-slate-400/15', text: 'text-slate-300', gradient: 'from-slate-400 to-slate-500' },
-  DOGE: { bg: 'bg-amber-500/15', text: 'text-amber-400', gradient: 'from-amber-500 to-yellow-500' },
-  ADA: { bg: 'bg-blue-400/15', text: 'text-blue-300', gradient: 'from-blue-400 to-cyan-500' },
-  MATIC: { bg: 'bg-violet-500/15', text: 'text-violet-400', gradient: 'from-violet-500 to-purple-500' },
+  TRX: { bg: 'bg-red-500/15', text: 'text-red-400', gradient: 'from-red-500 to-rose-500' },
   LTC: { bg: 'bg-slate-300/15', text: 'text-slate-300', gradient: 'from-slate-300 to-slate-400' },
 };
 
@@ -77,6 +84,9 @@ export default function CryptoIcon({ symbol, size = 'md', className = '' }: Cryp
   );
 }
 
+/**
+ * Crypto name map aligned with shared SUPPORTED_CRYPTOS constant.
+ */
 export function CryptoLabel({
   symbol,
   name,
@@ -90,12 +100,10 @@ export function CryptoLabel({
     BTC: 'Bitcoin',
     ETH: 'Ethereum',
     USDT: 'Tether',
+    USDC: 'USD Coin',
     BNB: 'BNB',
     SOL: 'Solana',
-    XRP: 'XRP',
-    DOGE: 'Dogecoin',
-    ADA: 'Cardano',
-    MATIC: 'Polygon',
+    TRX: 'TRON',
     LTC: 'Litecoin',
   };
 
