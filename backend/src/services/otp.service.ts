@@ -6,6 +6,8 @@ import { logger } from '../utils/logger';
 const OTP_TTL = 300; // 5 minutes
 const OTP_RATE_LIMIT_TTL = 60; // 1 minute between OTP requests
 const OTP_MAX_ATTEMPTS = 5;
+const OTP_HOURLY_MAX = 5; // Max OTP requests per identifier per hour
+const OTP_HOURLY_TTL = 3600; // 1 hour
 
 export class OTPService {
   /**
@@ -18,13 +20,23 @@ export class OTPService {
     const key = this.getKey(identifier, purpose);
     const rateLimitKey = `${key}:ratelimit`;
     const attemptsKey = `${key}:attempts`;
+    const hourlyKey = `${key}:hourly`;
 
-    // Check rate limit
+    // Check per-request rate limit (1 min cooldown)
     const rateLimited = await redis.exists(rateLimitKey);
     if (rateLimited) {
       const ttl = await redis.ttl(rateLimitKey);
       throw new RateLimitError(
         `Please wait ${ttl} seconds before requesting a new OTP`,
+      );
+    }
+
+    // Check hourly rate limit
+    const hourlyCount = parseInt((await redis.get(hourlyKey)) || '0', 10);
+    if (hourlyCount >= OTP_HOURLY_MAX) {
+      const ttl = await redis.ttl(hourlyKey);
+      throw new RateLimitError(
+        `Maximum OTP requests per hour exceeded. Try again in ${ttl} seconds.`,
       );
     }
 
@@ -34,13 +46,20 @@ export class OTPService {
     // Store OTP with TTL
     await redis.setex(key, OTP_TTL, otp);
 
-    // Set rate limit
+    // Set per-request rate limit
     await redis.setex(rateLimitKey, OTP_RATE_LIMIT_TTL, '1');
+
+    // Increment hourly counter
+    const newCount = await redis.incr(hourlyKey);
+    if (newCount === 1) {
+      await redis.expire(hourlyKey, OTP_HOURLY_TTL);
+    }
 
     // Reset attempt counter
     await redis.del(attemptsKey);
 
-    logger.info(`OTP generated for ${identifier} (purpose: ${purpose})`);
+    const maskedId = identifier.slice(0, 4) + '****' + identifier.slice(-2);
+    logger.info(`OTP generated for ${maskedId} (purpose: ${purpose})`);
 
     return otp;
   }

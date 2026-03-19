@@ -4,12 +4,30 @@ const cryptos = [
   { name: 'Bitcoin', symbol: 'BTC', color: '#F7931A' },
   { name: 'Ethereum', symbol: 'ETH', color: '#627EEA' },
   { name: 'Tether', symbol: 'USDT', color: '#26A17B' },
+  { name: 'USD Coin', symbol: 'USDC', color: '#2775CA' },
   { name: 'BNB', symbol: 'BNB', color: '#F3BA2F' },
   { name: 'Solana', symbol: 'SOL', color: '#9945FF' },
   { name: 'Polygon', symbol: 'MATIC', color: '#8247E5' },
   { name: 'Litecoin', symbol: 'LTC', color: '#BFBBBB' },
   { name: 'Dogecoin', symbol: 'DOGE', color: '#C2A633' },
   { name: 'XRP', symbol: 'XRP', color: '#23292F' },
+  { name: 'Avalanche', symbol: 'AVAX', color: '#E84142' },
+  { name: 'Polkadot', symbol: 'DOT', color: '#E6007A' },
+  { name: 'Cardano', symbol: 'ADA', color: '#0033AD' },
+  { name: 'TRON', symbol: 'TRX', color: '#FF0013' },
+  { name: 'Monero', symbol: 'XMR', color: '#FF6600' },
+  { name: 'Zcash', symbol: 'ZEC', color: '#ECB244' },
+  { name: 'Bitcoin Cash', symbol: 'BCH', color: '#0AC18E' },
+  { name: 'Chainlink', symbol: 'LINK', color: '#2A5ADA' },
+  { name: 'Uniswap', symbol: 'UNI', color: '#FF007A' },
+  { name: 'Aave', symbol: 'AAVE', color: '#B6509E' },
+  { name: 'Dai', symbol: 'DAI', color: '#F5AC37' },
+  { name: 'Shiba Inu', symbol: 'SHIB', color: '#FFA409' },
+  { name: 'Pepe', symbol: 'PEPE', color: '#3E8A2D' },
+  { name: 'Arbitrum', symbol: 'ARB', color: '#213147' },
+  { name: 'Optimism', symbol: 'OP', color: '#FF0420' },
+  { name: 'Base', symbol: 'BASE', color: '#0052FF' },
+  { name: 'Lightning', symbol: 'LN', color: '#F7931A' },
 ];
 
 function CryptoBadge({ name, symbol, color }: { name: string; symbol: string; color: string }) {
@@ -37,8 +55,11 @@ export default function SupportedCryptos() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
         <div className="text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-white">
-            Supported <span className="text-gradient">Cryptocurrencies</span>
+            <span className="text-gradient">30+</span> Supported Cryptocurrencies
           </h2>
+          <p className="text-gray-400 mt-2 text-sm">
+            Including Lightning Network, L2 rollups (Arbitrum, Optimism, Base), and custom ERC-20/BEP-20 tokens
+          </p>
         </div>
       </div>
 

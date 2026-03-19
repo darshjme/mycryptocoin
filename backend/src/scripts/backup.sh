@@ -54,7 +54,7 @@ else
   BACKUP_TYPE="hourly"
 fi
 
-FILENAME="mycryptocoin-${BACKUP_TYPE}-${TIMESTAMP}.sql.gz"
+FILENAME="mycryptocoin-${BACKUP_TYPE}-${TIMESTAMP}.dump"
 LOCAL_PATH="${BACKUP_DIR}/${FILENAME}"
 S3_KEY="${S3_PREFIX}/${BACKUP_TYPE}/${FILENAME}"
 
@@ -158,6 +158,7 @@ if command -v aws &>/dev/null && [ -n "$S3_BUCKET" ]; then
   aws s3 cp "$LOCAL_PATH" "s3://${S3_BUCKET}/${S3_KEY}" \
     --region "$REGION" \
     --storage-class STANDARD_IA \
+    --sse AES256 \
     --metadata "checksum=${CHECKSUM},type=${BACKUP_TYPE},duration=${DURATION}" \
     2>&1 | while IFS= read -r line; do log "S3: $line"; done
 
@@ -178,7 +179,7 @@ cleanup_type() {
 
   local count=0
   # List backups of this type, newest first
-  for f in $(ls -t "${BACKUP_DIR}"/mycryptocoin-${type}-*.sql.gz 2>/dev/null); do
+  for f in $(ls -t "${BACKUP_DIR}"/mycryptocoin-${type}-*.dump 2>/dev/null); do
     count=$((count + 1))
     if [ "$count" -gt "$keep" ]; then
       log "Deleting old ${type} backup: $(basename "$f")"

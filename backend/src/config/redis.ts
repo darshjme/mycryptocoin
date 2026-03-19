@@ -17,6 +17,14 @@ export function getRedisClient(): Redis {
         return targetErrors.some((e) => err.message.includes(e));
       },
       lazyConnect: true,
+      // Connection management
+      connectTimeout: 10_000,
+      commandTimeout: 5_000,
+      keepAlive: 30_000, // TCP keepalive every 30s — detect dead connections
+      enableOfflineQueue: true, // Buffer commands during reconnect
+      // Prevent unbounded memory growth during prolonged outages
+      offlineQueue: true,
+      maxRetriesPerRequest: 3,
     });
 
     redisClient.on('connect', () => {

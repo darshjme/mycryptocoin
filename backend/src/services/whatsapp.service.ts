@@ -178,6 +178,7 @@ export class WhatsAppService {
     if (!this.isConnected || !this.socket) return false;
 
     const jid = this.formatJid(phone);
+    if (!jid) return false;
 
     try {
       let message =
@@ -219,6 +220,7 @@ export class WhatsAppService {
     if (!this.isConnected || !this.socket) return false;
 
     const jid = this.formatJid(phone);
+    if (!jid) return false;
 
     try {
       const message =
@@ -248,6 +250,7 @@ export class WhatsAppService {
     if (!this.isConnected || !this.socket) return false;
 
     const jid = this.formatJid(phone);
+    if (!jid) return false;
 
     try {
       await this.socket.sendMessage(jid, { text });

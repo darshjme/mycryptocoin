@@ -241,13 +241,27 @@ export class CryptoService {
         case CryptoSymbol.XRP:
           return new Decimal('0.00001');
         case CryptoSymbol.USDT_TRC20:
-          return new Decimal('0'); // TRX fee handled separately
+          // TRC-20 transfers cost ~65,000 energy. Without staking, this is ~13 TRX.
+          // Return the USDT-equivalent cost so it can be deducted from the withdrawal.
+          // TODO: Fetch real-time TRX/USDT rate and energy price from TronGrid
+          return new Decimal('1'); // ~1 USDT conservative estimate for TRC-20 transfer energy
         default:
           return new Decimal('0');
       }
     } catch (error) {
       logger.error(`Failed to estimate fee for ${symbol}`, { error });
-      return new Decimal('0');
+      // Return a safe fallback fee rather than 0 to prevent undercharging
+      // These are conservative estimates that cover typical network conditions
+      const fallbackFees: Record<string, string> = {
+        [CryptoSymbol.ETH]: '0.005',
+        [CryptoSymbol.BNB]: '0.001',
+        [CryptoSymbol.MATIC]: '0.01',
+        [CryptoSymbol.USDT_ERC20]: '0.01',
+        [CryptoSymbol.SOL]: '0.000005',
+        [CryptoSymbol.BTC]: '0.00005',
+        [CryptoSymbol.USDT_TRC20]: '13', // ~13 TRX for TRC-20 energy
+      };
+      return new Decimal(fallbackFees[symbol] || '0.001');
     }
   }
 

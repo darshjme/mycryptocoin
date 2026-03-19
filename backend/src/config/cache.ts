@@ -148,30 +148,35 @@ export async function setCachedExchangeRate(chain: string, rate: ExchangeRate): 
 
 export async function getAllCachedExchangeRates(): Promise<Record<string, ExchangeRate>> {
   const redis = getRedisClient();
-  const keys = await redis.keys(`${PREFIX.EXCHANGE_RATE}:*`);
-  if (keys.length === 0) return {};
-
-  const pipeline = redis.pipeline();
-  for (const key of keys) {
-    pipeline.get(key);
-  }
-
-  const results = await pipeline.exec();
   const rates: Record<string, ExchangeRate> = {};
 
-  if (results) {
-    for (let i = 0; i < keys.length; i++) {
-      const [err, raw] = results[i];
-      if (!err && raw) {
-        const chain = keys[i].replace(`${PREFIX.EXCHANGE_RATE}:`, '');
-        try {
-          rates[chain] = JSON.parse(raw as string);
-        } catch {
-          // Skip malformed entries
+  // Use SCAN instead of KEYS to avoid blocking Redis under load
+  let cursor = '0';
+  do {
+    const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', `${PREFIX.EXCHANGE_RATE}:*`, 'COUNT', 100);
+    cursor = nextCursor;
+
+    if (keys.length > 0) {
+      const pipeline = redis.pipeline();
+      for (const key of keys) {
+        pipeline.get(key);
+      }
+      const results = await pipeline.exec();
+      if (results) {
+        for (let i = 0; i < keys.length; i++) {
+          const [err, raw] = results[i];
+          if (!err && raw) {
+            const chain = keys[i].replace(`${PREFIX.EXCHANGE_RATE}:`, '');
+            try {
+              rates[chain] = JSON.parse(raw as string);
+            } catch {
+              // Skip malformed entries
+            }
+          }
         }
       }
     }
-  }
+  } while (cursor !== '0');
 
   return rates;
 }
@@ -269,14 +274,15 @@ export async function warmCache(): Promise<void> {
 
 async function warmExchangeRates(): Promise<void> {
   try {
-    // Fetch from exchange rate service
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
+    // Reuse the shared prisma singleton instead of creating a new PrismaClient
+    // (creating new clients leaks connection pool slots on every cache warm)
+    const { prisma } = require('../config/database');
 
     const rates = await prisma.exchangeRate.findMany({
       where: { active: true },
     });
 
+    // Use pipeline for batch cache writes
     for (const rate of rates) {
       await setCachedExchangeRate(rate.chain, {
         chain: rate.chain,
@@ -288,7 +294,6 @@ async function warmExchangeRates(): Promise<void> {
     }
 
     logger.debug('Exchange rates warmed', { count: rates.length });
-    await prisma.$disconnect();
   } catch (err: any) {
     logger.warn('Failed to warm exchange rates', { error: err.message });
   }
@@ -296,8 +301,8 @@ async function warmExchangeRates(): Promise<void> {
 
 async function warmMerchantProfiles(): Promise<void> {
   try {
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
+    // Reuse the shared prisma singleton
+    const { prisma } = require('../config/database');
 
     const merchants = await prisma.merchant.findMany({
       where: { active: true },
@@ -318,7 +323,6 @@ async function warmMerchantProfiles(): Promise<void> {
     }
 
     logger.debug('Merchant profiles warmed', { count: merchants.length });
-    await prisma.$disconnect();
   } catch (err: any) {
     logger.warn('Failed to warm merchant profiles', { error: err.message });
   }
@@ -348,9 +352,16 @@ export async function getCacheStats(): Promise<Record<string, number>> {
   const redis = getRedisClient();
   const stats: Record<string, number> = {};
 
+  // Use SCAN instead of KEYS — KEYS blocks Redis for O(N) on the entire keyspace
   for (const [name, prefix] of Object.entries(PREFIX)) {
-    const keys = await redis.keys(`${prefix}:*`);
-    stats[name] = keys.length;
+    let cursor = '0';
+    let count = 0;
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', `${prefix}:*`, 'COUNT', 500);
+      cursor = nextCursor;
+      count += keys.length;
+    } while (cursor !== '0');
+    stats[name] = count;
   }
 
   return stats;

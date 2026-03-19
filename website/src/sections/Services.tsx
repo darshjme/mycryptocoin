@@ -216,7 +216,7 @@ const services = [
     titleSpan: 'Payment',
     titleRest: ' Processing',
     description:
-      'Accept BTC, ETH, USDT and 10+ cryptocurrencies with a single API integration. Automatic rate conversion, instant confirmations, and real-time webhook notifications for every transaction.',
+      'Accept BTC, ETH, SOL and 30+ cryptocurrencies including Lightning Network for instant BTC payments. Hosted checkout pages, embeddable widgets, and multiple display modes (popup, inline, full page). Automatic rate conversion, real-time webhooks, and Shopify integration.',
     SvgComponent: PaymentProcessingSVG,
     reverse: false,
   },
@@ -225,7 +225,7 @@ const services = [
     titleSpan: 'Smart',
     titleRest: ' Wallet System',
     description:
-      'Automatic and manual withdrawals with HD wallet generation for every merchant. Real-time balance tracking across all supported cryptocurrencies with detailed transaction history.',
+      'HD wallet generation for every merchant with auto-convert to USDT. Professional invoicing with line items, tax calculation, and PDF export. Full and partial refunds, discount codes, and exchange rate API. Support for custom ERC-20/BEP-20/TRC-20 tokens.',
     SvgComponent: SmartWalletSVG,
     reverse: true,
   },
@@ -234,7 +234,7 @@ const services = [
     titleSpan: 'Enterprise',
     titleRest: ' Security',
     description:
-      'End-to-end encryption for all transactions. WhatsApp-based 2FA for account security. HMAC webhook signatures ensure tamper-proof communication between your server and ours.',
+      'End-to-end encryption, WhatsApp-based 2FA, HMAC webhook signatures, and testnet support (Bitcoin Testnet3, Ethereum Sepolia, Solana Devnet). White-label checkout with custom domains, branding, and 40+ language support including RTL.',
     SvgComponent: EnterpriseSecuritySVG,
     reverse: false,
   },
