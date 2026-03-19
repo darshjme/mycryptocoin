@@ -186,13 +186,27 @@ export function startCluster(startServer: () => void | Promise<void>): void {
     // ---- Worker process ---------------------------------------------------
     logger.info(`Worker ${process.pid} starting`);
 
-    // Handle graceful shutdown message from primary
+    // Handle graceful shutdown message from primary.
+    // Give in-flight requests up to 15 seconds to finish before exiting.
     process.on('message', (msg) => {
       if (msg === 'shutdown') {
-        logger.info(`Worker ${process.pid} received shutdown — draining`);
-        // The server should stop accepting new connections and drain existing ones.
-        // The actual server reference is returned from startServer so it can call .close().
-        process.exit(0);
+        logger.info(`Worker ${process.pid} received shutdown — draining in-flight requests`);
+
+        // Stop the server from accepting new connections; existing ones drain naturally.
+        // The http.Server returned from startServer is captured via process-level ref.
+        const server = (process as any).__httpServer;
+        if (server && typeof server.close === 'function') {
+          server.close(() => {
+            logger.info(`Worker ${process.pid} drained — exiting`);
+            process.exit(0);
+          });
+        }
+
+        // Safety net: force exit after 15 seconds if drain doesn't complete
+        setTimeout(() => {
+          logger.warn(`Worker ${process.pid} drain timeout — force exiting`);
+          process.exit(1);
+        }, 15_000).unref();
       }
     });
 

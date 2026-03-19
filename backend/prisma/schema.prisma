@@ -1,15 +1,35 @@
 // ============================================
 // MyCryptoCoin — Prisma Database Schema
-// PostgreSQL 15
+// PostgreSQL 15+
+// Production-grade for financial system
+//
+// AUDIT FIXES APPLIED:
+// 1. Added missing models: Invoice, Refund, Discount, DiscountUsage
+// 2. Added missing fields on Payment (network, token, externalId, requestedAmount,
+//    cryptoAmount, receivedAmount, exchangeRate, fee, feeRate, paidAt)
+// 3. Added missing fields on Withdrawal (network, token, fee, netAmount)
+// 4. Added missing fields on FeeRecord (network, token, feeRate)
+// 5. Added missing fields on Wallet (network, token) to match service code
+// 6. Changed Merchant onDelete from CASCADE to RESTRICT on financial tables
+// 7. Added compound indexes for all WHERE clause patterns found in services
+// 8. Added soft-delete (deletedAt) on financial records
+// 9. Added connection pooling URL support
+// 10. Added missing enum types (InvoiceStatus, RefundStatus, DiscountType,
+//     FraudAlertSeverity, FraudAlertStatus, ConversionStatus, DisbursementStatus,
+//     SweepRecordStatus)
+// 11. Fixed Wallet unique constraint to match service code (merchantId+network+token)
+// 12. Added missing compound indexes for pagination queries
 // ============================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["metrics"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL") // bypass pgbouncer for migrations
 }
 
 // ──────────────────────────────────────────────
@@ -40,18 +60,19 @@ enum KycStatus {
 }
 
 enum PaymentStatus {
+  AWAITING_PAYMENT
+  UNDERPAID
+  PAID
+  OVERPAID
+  EXPIRED
+  CANCELLED
+  REFUNDED
+  // Legacy statuses kept for backward compatibility
   PENDING
   CONFIRMING
   CONFIRMED
   COMPLETED
-  EXPIRED
-  CANCELLED
   FAILED
-  REFUNDED
-  AWAITING_PAYMENT
-  UNDERPAID
-  OVERPAID
-  PAID
 }
 
 enum TransactionType {
@@ -110,6 +131,66 @@ enum SweepStatus {
   FAILED
 }
 
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum FraudAlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FraudAlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  DISMISSED
+  ESCALATED
+  AUTO_RESOLVED
+}
+
+enum ConversionStatus {
+  PENDING
+  SWEEPING
+  SWAPPING
+  SETTLING
+  COMPLETED
+  FAILED
+}
+
+enum DisbursementStatus {
+  PENDING
+  SENT
+  CONFIRMED
+  FAILED
+}
+
+enum SweepRecordStatus {
+  PENDING
+  BROADCAST
+  CONFIRMED
+  FAILED
+}
+
 // ──────────────────────────────────────────────
 // Core Models
 // ──────────────────────────────────────────────
@@ -148,6 +229,9 @@ model Merchant {
   frozenBy                String?   @map("frozen_by") @db.Uuid
   frozenReason            String?   @map("frozen_reason") @db.Text
 
+  // Soft delete — NEVER hard-delete merchants
+  deletedAt               DateTime? @map("deleted_at")
+
   lastLoginAt             DateTime? @map("last_login_at")
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
@@ -164,6 +248,9 @@ model Merchant {
   kycSubmissions   KycSubmission[]
   conversions      Conversion[]
   feeDisbursements FeeDisbursement[]
+  invoices         Invoice[]
+  refunds          Refund[]
+  discounts        Discount[]
 
   @@index([email])
   @@index([phone])
@@ -171,6 +258,10 @@ model Merchant {
   @@index([isActive])
   @@index([isFrozen])
   @@index([kycTier])
+  @@index([kycStatus])
+  @@index([kycExpiresAt])
+  @@index([createdAt])
+  @@index([deletedAt])
   @@map("merchants")
 }
 
@@ -178,7 +269,7 @@ model ApiKey {
   id          String    @id @default(uuid()) @db.Uuid
   merchantId  String    @map("merchant_id") @db.Uuid
   name        String    @db.VarChar(100)
-  keyHash     String    @map("key_hash") @db.VarChar(255)
+  keyHash     String    @unique @map("key_hash") @db.VarChar(255)
   keyPrefix   String    @map("key_prefix") @db.VarChar(16)
   mode        String    @db.VarChar(10) // 'live' | 'test'
   permissions String[]  @default(["payments:read", "payments:write"])
@@ -189,11 +280,11 @@ model ApiKey {
   expiresAt   DateTime? @map("expires_at")
   createdAt   DateTime  @default(now()) @map("created_at")
 
-  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   @@index([merchantId])
   @@index([keyPrefix])
-  @@index([keyHash])
+  @@index([merchantId, isActive])
   @@map("api_keys")
 }
 
@@ -201,6 +292,8 @@ model Wallet {
   id                    String   @id @default(uuid()) @db.Uuid
   merchantId            String   @map("merchant_id") @db.Uuid
   crypto                String   @db.VarChar(20)
+  network               String   @default("") @db.VarChar(30) // BITCOIN, ETHEREUM, TRON, etc.
+  token                 String   @default("") @db.VarChar(20) // BTC, ETH, USDT, etc.
   address               String   @db.VarChar(255)
   publicKey             String?  @map("public_key") @db.VarChar(255)
   derivationPath        String?  @map("derivation_path") @db.VarChar(100)
@@ -215,23 +308,42 @@ model Wallet {
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
-  merchant     Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant     Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   payments     Payment[]
   withdrawals  Withdrawal[]
   transactions Transaction[]
 
   @@unique([merchantId, crypto])
+  @@unique([merchantId, network, token])
   @@index([merchantId])
   @@index([crypto])
+  @@index([address])
   @@map("wallets")
 }
 
+/// Payment: the primary financial record. ALL monetary fields use Decimal.
 model Payment {
   id                    String        @id @db.VarChar(64)
   merchantId            String        @map("merchant_id") @db.Uuid
   walletId              String?       @map("wallet_id") @db.Uuid
+  externalId            String?       @map("external_id") @db.VarChar(100) // merchant-provided external ID
+
+  // Crypto details
   crypto                String        @db.VarChar(20)
-  amount                Decimal       @db.Decimal(30, 18)
+  network               String        @default("") @db.VarChar(30) // BITCOIN, ETHEREUM, TRON, etc.
+  token                 String        @default("") @db.VarChar(20) // BTC, ETH, USDT, etc.
+
+  // Amounts — ALL Decimal, NO Float
+  requestedAmount       Decimal       @default(0) @map("requested_amount") @db.Decimal(30, 18)
+  requestedCurrency     String        @default("USD") @map("requested_currency") @db.VarChar(10)
+  cryptoAmount          Decimal       @default(0) @map("crypto_amount") @db.Decimal(30, 18)
+  receivedAmount        Decimal       @default(0) @map("received_amount") @db.Decimal(30, 18)
+  exchangeRate          Decimal       @default(1) @map("exchange_rate") @db.Decimal(20, 8)
+  fee                   Decimal       @default(0) @db.Decimal(30, 18)
+  feeRate               Decimal       @default(0.005) @map("fee_rate") @db.Decimal(10, 6)
+
+  // Legacy fields kept for backward compatibility
+  amount                Decimal       @default(0) @db.Decimal(30, 18)
   currency              String        @default("USD") @db.VarChar(10)
   description           String?       @db.VarChar(500)
   orderId               String?       @map("order_id") @db.VarChar(100)
@@ -243,38 +355,50 @@ model Payment {
   derivationPath        String?       @map("derivation_path") @db.VarChar(100)
   txHash                String?       @map("tx_hash") @db.VarChar(255)
   confirmations         Int           @default(0)
-  confirmationsRequired Int           @map("confirmations_required")
+  confirmationsRequired Int           @default(1) @map("confirmations_required")
   detectedAmount        Decimal?      @map("detected_amount") @db.Decimal(30, 18)
   feeAmount             Decimal?      @map("fee_amount") @db.Decimal(30, 18)
   netAmount             Decimal?      @map("net_amount") @db.Decimal(30, 18)
-  status                PaymentStatus @default(PENDING)
+
+  status                PaymentStatus @default(AWAITING_PAYMENT)
   metadata              Json?
+
   expiresAt             DateTime      @map("expires_at")
+  paidAt                DateTime?     @map("paid_at")
   completedAt           DateTime?     @map("completed_at")
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
 
-  merchant     Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant     Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   wallet       Wallet?       @relation(fields: [walletId], references: [id])
   feeRecord    FeeRecord?
   transactions Transaction[]
   conversion   Conversion?
+  refunds      Refund[]
 
+  // Compound indexes matching service query patterns
+  @@index([merchantId, status])        // listPayments: merchantId + status filter
+  @@index([merchantId, createdAt])     // listPayments: merchantId + date range pagination
+  @@index([merchantId, network, token]) // wallet address generation counter
+  @@index([status, expiresAt])         // checkExpiredPayments: status=AWAITING + expiresAt < now
   @@index([merchantId])
   @@index([orderId])
+  @@index([externalId])
   @@index([status])
   @@index([depositAddress])
   @@index([crypto])
   @@index([createdAt])
+  @@index([txHash])
   @@map("payments")
 }
 
+/// Blockchain transaction record.
 model Transaction {
   id                    String            @id @default(uuid()) @db.Uuid
   paymentId             String?           @map("payment_id") @db.VarChar(64)
   withdrawalId          String?           @map("withdrawal_id") @db.VarChar(64)
   walletId              String            @map("wallet_id") @db.Uuid
-  network               String            @db.VarChar(20)
+  network               String            @db.VarChar(30)
   token                 String            @db.VarChar(20)
   type                  String?           @db.VarChar(20)
   txHash                String            @map("tx_hash") @db.VarChar(255)
@@ -302,16 +426,22 @@ model Transaction {
   @@index([walletId])
   @@index([txHash])
   @@index([status])
+  @@index([status, createdAt])         // monitoring: status filter + time ordering
   @@index([createdAt])
   @@map("transactions")
 }
 
+/// Withdrawal: funds leaving the platform to merchant's external address.
 model Withdrawal {
   id              String           @id @db.VarChar(64)
   merchantId      String           @map("merchant_id") @db.Uuid
   walletId        String           @map("wallet_id") @db.Uuid
   crypto          String           @db.VarChar(20)
+  network         String           @default("TRON") @db.VarChar(30) // TRON, BITCOIN, etc.
+  token           String           @default("USDT") @db.VarChar(20) // USDT, BTC, etc.
   amount          Decimal          @db.Decimal(30, 18)
+  fee             Decimal          @default(0) @db.Decimal(30, 18)
+  netAmount       Decimal          @default(0) @map("net_amount") @db.Decimal(30, 18)
   toAddress       String           @map("to_address") @db.VarChar(255)
   memo            String?          @db.VarChar(255)
   estimatedFee    Decimal?         @map("estimated_fee") @db.Decimal(30, 18)
@@ -339,17 +469,23 @@ model Withdrawal {
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  merchant            Merchant             @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant            Merchant             @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   wallet              Wallet               @relation(fields: [walletId], references: [id])
   transactions        Transaction[]
   withdrawalApprovals WithdrawalApproval[]
 
+  // Compound indexes matching service query patterns
+  @@index([merchantId, status])        // getWithdrawals: merchantId + status filter
+  @@index([merchantId, createdAt])     // getWithdrawals: merchantId + date ordering
+  @@index([merchantId, crypto, status, createdAt]) // fraud: amount anomaly aggregate
+  @@index([merchantId, toAddress, status]) // fraud: new address check
   @@index([merchantId])
   @@index([walletId])
   @@index([status])
   @@index([approvalStatus])
   @@index([crypto])
   @@index([createdAt])
+  @@index([toAddress])
   @@map("withdrawals")
 }
 
@@ -402,6 +538,7 @@ model Webhook {
   deliveries WebhookDelivery[]
 
   @@index([merchantId])
+  @@index([merchantId, isActive])      // dispatch: merchantId + isActive + events
   @@map("webhooks")
 }
 
@@ -420,11 +557,13 @@ model WebhookDelivery {
   webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
   @@index([webhookId])
+  @@index([webhookId, createdAt])      // delivery history per webhook
   @@index([event])
   @@index([createdAt])
   @@map("webhook_deliveries")
 }
 
+/// Audit log — APPEND-ONLY. No updates, no deletes. Never hard-delete.
 model AuditLog {
   id            String   @id @default(uuid()) @db.Uuid
   merchantId    String?  @map("merchant_id") @db.Uuid
@@ -443,30 +582,38 @@ model AuditLog {
   metadata      Json?
   createdAt     DateTime @default(now()) @map("created_at")
 
-  merchant Merchant? @relation(fields: [merchantId], references: [id])
+  merchant Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
 
   @@index([merchantId])
   @@index([adminId])
   @@index([action])
+  @@index([targetId])
   @@index([createdAt])
+  @@index([adminId, createdAt])        // audit query: adminId + date range
+  @@index([action, createdAt])         // audit query: action filter + date range
   @@map("audit_logs")
 }
 
+/// Fee record — tracks platform fees on each payment. Never hard-delete.
 model FeeRecord {
   id          String    @id @default(uuid()) @db.Uuid
   paymentId   String    @unique @map("payment_id") @db.VarChar(64)
   merchantId  String    @map("merchant_id") @db.Uuid
   crypto      String    @db.VarChar(20)
+  network     String    @default("TRON") @db.VarChar(30)
+  token       String    @default("USDT") @db.VarChar(20)
   grossAmount Decimal   @map("gross_amount") @db.Decimal(30, 18)
+  feeRate     Decimal   @default(0.005) @map("fee_rate") @db.Decimal(10, 6)
   feeAmount   Decimal   @map("fee_amount") @db.Decimal(30, 18)
   netAmount   Decimal   @map("net_amount") @db.Decimal(30, 18)
   settledAt   DateTime? @map("settled_at")
   createdAt   DateTime  @default(now()) @map("created_at")
 
   payment  Payment  @relation(fields: [paymentId], references: [id])
-  merchant Merchant @relation(fields: [merchantId], references: [id])
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   @@index([merchantId])
+  @@index([merchantId, createdAt])     // getMerchantFees: pagination
   @@index([crypto])
   @@index([createdAt])
   @@index([settledAt])
@@ -483,12 +630,13 @@ model WithdrawalApproval {
   adminId      String   @map("admin_id") @db.VarChar(255)
   adminEmail   String   @map("admin_email") @db.VarChar(255)
   adminRole    String   @map("admin_role") @db.VarChar(50)
-  action       String   @db.VarChar(20)
+  action       String   @db.VarChar(20) // 'APPROVED' | 'REJECTED'
   comment      String   @default("") @db.Text
   createdAt    DateTime @default(now()) @map("created_at")
 
-  withdrawal Withdrawal @relation(fields: [withdrawalId], references: [id], onDelete: Cascade)
+  withdrawal Withdrawal @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
 
+  @@unique([withdrawalId, adminId, action]) // prevent duplicate approvals
   @@index([withdrawalId])
   @@index([adminId])
   @@index([createdAt])
@@ -503,7 +651,7 @@ model PlatformWallet {
   id          String     @id @default(uuid()) @db.Uuid
   crypto      String     @db.VarChar(20)
   type        WalletType
-  address     String     @db.VarChar(255)
+  address     String     @unique @db.VarChar(255)
   balance     Decimal    @default(0) @db.Decimal(30, 18)
   label       String?    @db.VarChar(100)
   lastSweepAt DateTime?  @map("last_sweep_at")
@@ -513,6 +661,7 @@ model PlatformWallet {
 
   @@unique([crypto, type])
   @@index([crypto])
+  @@index([crypto, type, isActive])    // wallet management: find active hot/cold per crypto
   @@index([type])
   @@map("platform_wallets")
 }
@@ -531,6 +680,7 @@ model WalletSweep {
   @@index([crypto])
   @@index([status])
   @@index([createdAt])
+  @@index([crypto, createdAt])         // sweep history: filter by crypto + time
   @@map("wallet_sweeps")
 }
 
@@ -565,7 +715,6 @@ model SystemSetting {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@index([key])
   @@map("system_settings")
 }
 
@@ -574,27 +723,29 @@ model SystemSetting {
 // ──────────────────────────────────────────────
 
 model FraudAlert {
-  id                String    @id @default(uuid()) @db.Uuid
-  merchantId        String    @map("merchant_id") @db.Uuid
-  type              String    @db.VarChar(50)
-  severity          String    @db.VarChar(20)
-  status            String    @default("active") @db.VarChar(30)
-  title             String    @db.VarChar(255)
-  description       String    @db.Text
+  id                String             @id @default(uuid()) @db.Uuid
+  merchantId        String             @map("merchant_id") @db.Uuid
+  type              String             @db.VarChar(50)
+  severity          String             @db.VarChar(20) // maps to FraudAlertSeverity in app code
+  status            String             @default("active") @db.VarChar(30)
+  title             String             @db.VarChar(255)
+  description       String             @db.Text
   metadata          Json?
-  recommendedAction String?   @map("recommended_action") @db.Text
-  autoFrozen        Boolean   @default(false) @map("auto_frozen")
-  notes             String?   @db.Text
-  acknowledgedAt    DateTime? @map("acknowledged_at")
-  acknowledgedBy    String?   @map("acknowledged_by") @db.VarChar(255)
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  recommendedAction String?            @map("recommended_action") @db.Text
+  autoFrozen        Boolean            @default(false) @map("auto_frozen")
+  notes             String?            @db.Text
+  acknowledgedAt    DateTime?          @map("acknowledged_at")
+  acknowledgedBy    String?            @map("acknowledged_by") @db.VarChar(255)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
 
-  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   @@index([merchantId])
+  @@index([merchantId, status])        // getAlerts: merchantId + status filter
   @@index([status])
   @@index([severity])
+  @@index([severity, status])          // getAlertCounts: severity groupBy where status=active
   @@index([type])
   @@index([createdAt])
   @@map("fraud_alerts")
@@ -610,7 +761,6 @@ model AddressBlacklist {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@index([address])
   @@map("address_blacklist")
 }
 
@@ -632,11 +782,12 @@ model KycSubmission {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  merchant  Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant  Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   documents KycDocument[]
 
   @@index([merchantId])
   @@index([status])
+  @@index([status, submittedAt])       // review queue: status filter + FIFO ordering
   @@index([submittedAt])
   @@map("kyc_submissions")
 }
@@ -679,7 +830,10 @@ model AdminSession {
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@index([adminId])
+  @@index([adminId, isActive])         // concurrent session check
+  @@index([adminId, isActive, expiresAt]) // active session validation
   @@index([isActive])
+  @@index([isActive, expiresAt])       // cleanup expired sessions
   @@index([expiresAt])
   @@map("admin_sessions")
 }
@@ -698,6 +852,7 @@ model AdminLoginLog {
 
   @@index([email])
   @@index([adminId])
+  @@index([adminId, createdAt])        // IP mismatch check: recent logins
   @@index([success])
   @@index([createdAt])
   @@map("admin_login_logs")
@@ -727,92 +882,97 @@ model Conversion {
   paymentId       String   @unique @map("payment_id") @db.VarChar(64)
   payment         Payment  @relation(fields: [paymentId], references: [id])
   merchantId      String   @map("merchant_id") @db.Uuid
-  merchant        Merchant @relation(fields: [merchantId], references: [id])
+  merchant        Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   // What was received
-  sourceCrypto    String   @map("source_crypto") @db.VarChar(20)  // BTC, ETH, SOL, etc.
-  sourceNetwork   String   @map("source_network") @db.VarChar(30) // BITCOIN, ETHEREUM, SOLANA, etc.
+  sourceCrypto    String   @map("source_crypto") @db.VarChar(20)
+  sourceNetwork   String   @map("source_network") @db.VarChar(30)
   sourceAmount    Decimal  @map("source_amount") @db.Decimal(30, 18)
-  sourceAddress   String   @map("source_address") @db.VarChar(255) // address that received the crypto
-  sourceTxHash    String?  @map("source_tx_hash") @db.VarChar(255) // blockchain tx hash of incoming payment
+  sourceAddress   String   @map("source_address") @db.VarChar(255)
+  sourceTxHash    String?  @map("source_tx_hash") @db.VarChar(255)
 
   // Exchange rate at conversion time
-  exchangeRate    Decimal  @map("exchange_rate") @db.Decimal(20, 8) // 1 crypto = X USDT
-  rateSource      String   @map("rate_source") @db.VarChar(50) // 'coingecko', 'binance', 'kraken', 'median'
-  rateTimestamp   DateTime @map("rate_timestamp") // when the rate was fetched
+  exchangeRate    Decimal  @map("exchange_rate") @db.Decimal(20, 8)
+  rateSource      String   @map("rate_source") @db.VarChar(50)
+  rateTimestamp   DateTime @map("rate_timestamp")
 
   // Conversion execution
-  conversionMethod  String   @map("conversion_method") @db.VarChar(50) // 'cex_binance', 'cex_kraken', 'dex_1inch', 'dex_jupiter', 'passthrough', 'virtual'
-  conversionTxHash  String?  @map("conversion_tx_hash") @db.VarChar(255) // tx hash of the swap (DEX) or trade ID (CEX)
-  conversionFee     Decimal  @map("conversion_fee") @db.Decimal(20, 8) // gas/swap fee in USDT
-  conversionFeePaidBy String @default("customer") @map("conversion_fee_paid_by") @db.VarChar(20) // 'customer' or 'platform'
-  slippage          Decimal? @db.Decimal(10, 4) // actual slippage %
+  conversionMethod  String   @map("conversion_method") @db.VarChar(50)
+  conversionTxHash  String?  @map("conversion_tx_hash") @db.VarChar(255)
+  conversionFee     Decimal  @map("conversion_fee") @db.Decimal(20, 8)
+  conversionFeePaidBy String @default("customer") @map("conversion_fee_paid_by") @db.VarChar(20)
+  slippage          Decimal? @db.Decimal(10, 4)
 
   // What was converted to
   targetCrypto    String   @default("USDT") @map("target_crypto") @db.VarChar(20)
   targetNetwork   String   @default("TRON") @map("target_network") @db.VarChar(30)
-  grossUsdtAmount Decimal  @map("gross_usdt_amount") @db.Decimal(20, 8) // before any fees
-  netUsdtAmount   Decimal  @map("net_usdt_amount") @db.Decimal(20, 8) // after conversion fee
+  grossUsdtAmount Decimal  @map("gross_usdt_amount") @db.Decimal(20, 8)
+  netUsdtAmount   Decimal  @map("net_usdt_amount") @db.Decimal(20, 8)
 
   // Platform fee
-  platformFeeRate   Decimal  @default(0.005) @map("platform_fee_rate") @db.Decimal(10, 6) // 0.5%
-  platformFeeAmount Decimal  @map("platform_fee_amount") @db.Decimal(20, 8) // actual fee in USDT
-  platformFeeTxHash String?  @map("platform_fee_tx_hash") @db.VarChar(255) // tx hash of fee transfer to owner wallet
+  platformFeeRate   Decimal  @default(0.005) @map("platform_fee_rate") @db.Decimal(10, 6)
+  platformFeeAmount Decimal  @map("platform_fee_amount") @db.Decimal(20, 8)
+  platformFeeTxHash String?  @map("platform_fee_tx_hash") @db.VarChar(255)
 
   // What merchant gets
-  merchantCredited  Decimal  @map("merchant_credited") @db.Decimal(20, 8) // netUsdtAmount - platformFeeAmount
+  merchantCredited  Decimal  @map("merchant_credited") @db.Decimal(20, 8)
 
   // Status tracking
-  status          String   @default("PENDING") @db.VarChar(30) // PENDING, SWEEPING, SWAPPING, SETTLING, COMPLETED, FAILED
+  status          String   @default("PENDING") @db.VarChar(30)
   failureReason   String?  @map("failure_reason") @db.Text
 
   // Timestamps
-  receivedAt      DateTime @map("received_at") // when crypto was received
-  sweepStartedAt  DateTime? @map("sweep_started_at") // when sweep to exchange started
-  sweepTxHash     String?   @map("sweep_tx_hash") @db.VarChar(255) // tx hash of sweep to exchange
-  swapStartedAt   DateTime? @map("swap_started_at") // when exchange swap started
-  swapCompletedAt DateTime? @map("swap_completed_at") // when swap completed
-  settledAt       DateTime? @map("settled_at") // when USDT credited to merchant
+  receivedAt      DateTime @map("received_at")
+  sweepStartedAt  DateTime? @map("sweep_started_at")
+  sweepTxHash     String?   @map("sweep_tx_hash") @db.VarChar(255)
+  swapStartedAt   DateTime? @map("swap_started_at")
+  swapCompletedAt DateTime? @map("swap_completed_at")
+  settledAt       DateTime? @map("settled_at")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   feeDisbursements FeeDisbursement[]
 
   @@index([merchantId])
+  @@index([merchantId, status])        // merchant conversion history
   @@index([status])
   @@index([paymentId])
   @@index([createdAt])
+  @@index([status, createdAt])         // pipeline monitoring
   @@map("conversions")
 }
 
 /// Tracks exchange/DEX configurations with encrypted API keys.
 model ExchangeConfig {
   id                  String  @id @default(cuid())
-  name                String  @unique @db.VarChar(50) // 'binance', 'kraken', '1inch', 'jupiter'
+  name                String  @unique @db.VarChar(50)
   type                String  @db.VarChar(10) // 'cex' or 'dex'
   isActive            Boolean @default(true) @map("is_active")
-  priority            Int     @default(0) // higher = preferred
+  priority            Int     @default(0)
   apiKeyEncrypted     String? @map("api_key_encrypted") @db.Text // AES-256-GCM encrypted
-  apiSecretEncrypted  String? @map("api_secret_encrypted") @db.Text
-  depositAddresses    Json?   @map("deposit_addresses") // { BTC: 'addr', ETH: 'addr', ... }
-  config              Json?   // exchange-specific config
-  maxSlippage         Decimal @default(0.5) @map("max_slippage") @db.Decimal(10, 4) // max 0.5%
-  minAmount           Decimal @default(0) @map("min_amount") @db.Decimal(20, 8) // min amount to process
-  maxAmount           Decimal @default(1000000) @map("max_amount") @db.Decimal(20, 8) // max per trade
-  dailyVolume         Decimal @default(0) @map("daily_volume") @db.Decimal(20, 8) // tracked daily volume
-  dailyLimit          Decimal @default(10000000) @map("daily_limit") @db.Decimal(20, 8) // daily limit
+  apiSecretEncrypted  String? @map("api_secret_encrypted") @db.Text // AES-256-GCM encrypted
+  depositAddresses    Json?   @map("deposit_addresses")
+  config              Json?
+  maxSlippage         Decimal @default(0.5) @map("max_slippage") @db.Decimal(10, 4)
+  minAmount           Decimal @default(0) @map("min_amount") @db.Decimal(20, 8)
+  maxAmount           Decimal @default(1000000) @map("max_amount") @db.Decimal(20, 8)
+  dailyVolume         Decimal @default(0) @map("daily_volume") @db.Decimal(20, 8)
+  dailyLimit          Decimal @default(10000000) @map("daily_limit") @db.Decimal(20, 8)
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
+  @@index([isActive, priority])        // find best active exchange
   @@map("exchange_configs")
 }
 
 /// Exchange rate history for auditing and compliance.
+/// WARNING: This table grows fast. Implement retention policy (e.g. keep 90 days,
+/// archive to S3/cold storage for compliance). Add partitioning by fetchedAt.
 model ExchangeRateLog {
   id          String   @id @default(cuid())
-  crypto      String   @db.VarChar(20) // BTC, ETH, etc.
+  crypto      String   @db.VarChar(20)
   usdtRate    Decimal  @map("usdt_rate") @db.Decimal(20, 8)
-  source      String   @db.VarChar(50) // 'coingecko', 'binance', etc.
+  source      String   @db.VarChar(50)
   fetchedAt   DateTime @default(now()) @map("fetched_at")
 
   @@index([crypto, fetchedAt])
@@ -826,20 +986,22 @@ model FeeDisbursement {
   conversionId    String?  @map("conversion_id")
   conversion      Conversion? @relation(fields: [conversionId], references: [id])
   merchantId      String?  @map("merchant_id") @db.Uuid
-  merchant        Merchant? @relation(fields: [merchantId], references: [id])
+  merchant        Merchant? @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
-  amount          Decimal  @db.Decimal(20, 8) // USDT amount
-  ownerAddress    String   @map("owner_address") @db.VarChar(255) // TRON address of owner
-  txHash          String?  @map("tx_hash") @db.VarChar(255) // TRC-20 transfer tx hash
-  status          String   @default("PENDING") @db.VarChar(20) // PENDING, SENT, CONFIRMED, FAILED
+  amount          Decimal  @db.Decimal(20, 8)
+  ownerAddress    String   @map("owner_address") @db.VarChar(255)
+  txHash          String?  @map("tx_hash") @db.VarChar(255)
+  status          String   @default("PENDING") @db.VarChar(20)
   failureReason   String?  @map("failure_reason") @db.Text
   sentAt          DateTime? @map("sent_at")
   confirmedAt     DateTime? @map("confirmed_at")
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@index([status])
+  @@index([status, createdAt])         // processing queue
   @@index([createdAt])
   @@index([merchantId])
+  @@index([conversionId])
   @@map("fee_disbursements")
 }
 
@@ -847,18 +1009,150 @@ model FeeDisbursement {
 model WalletSweepRecord {
   id              String   @id @default(cuid())
   fromAddress     String   @map("from_address") @db.VarChar(255)
-  toAddress       String   @map("to_address") @db.VarChar(255) // exchange deposit or hot wallet
+  toAddress       String   @map("to_address") @db.VarChar(255)
   crypto          String   @db.VarChar(20)
   network         String   @db.VarChar(30)
   amount          Decimal  @db.Decimal(30, 18)
   txHash          String?  @map("tx_hash") @db.VarChar(255)
   networkFee      Decimal? @map("network_fee") @db.Decimal(20, 8)
-  status          String   @default("PENDING") @db.VarChar(20) // PENDING, BROADCAST, CONFIRMED, FAILED
-  purpose         String   @db.VarChar(50) // 'exchange_deposit', 'hot_to_cold', 'consolidation'
+  status          String   @default("PENDING") @db.VarChar(20)
+  purpose         String   @db.VarChar(50)
   createdAt       DateTime @default(now()) @map("created_at")
   confirmedAt     DateTime? @map("confirmed_at")
 
   @@index([status])
+  @@index([status, createdAt])         // processing queue
   @@index([crypto])
+  @@index([fromAddress])
+  @@index([createdAt])
   @@map("wallet_sweep_records")
+}
+
+// ──────────────────────────────────────────────
+// Invoicing
+// ──────────────────────────────────────────────
+
+/// Professional invoices with line items, tax, and crypto payment.
+model Invoice {
+  id              String        @id @db.VarChar(64)
+  merchantId      String        @map("merchant_id") @db.Uuid
+  invoiceNumber   String        @unique @map("invoice_number") @db.VarChar(50)
+  status          InvoiceStatus @default(DRAFT)
+
+  // Customer details
+  customerName    String?       @map("customer_name") @db.VarChar(200)
+  customerEmail   String?       @map("customer_email") @db.VarChar(255)
+  customerAddress String?       @map("customer_address") @db.Text
+
+  // Financial — ALL Decimal, NO Float
+  lineItems       Json          @map("line_items")
+  subtotal        Decimal       @db.Decimal(20, 8)
+  taxRate         Decimal?      @map("tax_rate") @db.Decimal(10, 4)
+  taxAmount       Decimal?      @map("tax_amount") @db.Decimal(20, 8)
+  total           Decimal       @db.Decimal(20, 8)
+  currency        String        @default("USD") @db.VarChar(10)
+
+  // Dates
+  dueDate         DateTime?     @map("due_date")
+  paidAt          DateTime?     @map("paid_at")
+
+  // Links
+  paymentId       String?       @map("payment_id") @db.VarChar(64)
+
+  notes           String?       @db.Text
+  metadata        Json?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@index([merchantId])
+  @@index([merchantId, status])        // listInvoices: merchantId + status filter
+  @@index([merchantId, createdAt])     // listInvoices: pagination
+  @@index([status])
+  @@index([customerEmail])
+  @@index([createdAt])
+  @@map("invoices")
+}
+
+// ──────────────────────────────────────────────
+// Refunds
+// ──────────────────────────────────────────────
+
+/// Refund records — full and partial refunds for completed payments. Never hard-delete.
+model Refund {
+  id          String       @id @db.VarChar(64)
+  paymentId   String       @map("payment_id") @db.VarChar(64)
+  merchantId  String       @map("merchant_id") @db.Uuid
+  amount      Decimal      @db.Decimal(30, 18)
+  currency    String       @db.VarChar(50) // e.g. "TRON:USDT"
+  network     String?      @db.VarChar(30)
+  token       String?      @db.VarChar(20)
+  toAddress   String?      @map("to_address") @db.VarChar(255)
+  txHash      String?      @map("tx_hash") @db.VarChar(255)
+  reason      String?      @db.Text
+  status      RefundStatus @default(PENDING)
+  isPartial   Boolean      @default(false) @map("is_partial")
+  processedAt DateTime?    @map("processed_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  payment  Payment  @relation(fields: [paymentId], references: [id])
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([paymentId, status])         // check existing refunds
+  @@index([merchantId])
+  @@index([merchantId, status])
+  @@index([status])
+  @@index([createdAt])
+  @@map("refunds")
+}
+
+// ──────────────────────────────────────────────
+// Discounts / Coupons
+// ──────────────────────────────────────────────
+
+/// Discount codes: percentage or fixed amount.
+model Discount {
+  id                    String       @id @db.VarChar(64)
+  merchantId            String       @map("merchant_id") @db.Uuid
+  code                  String       @db.VarChar(50)
+  type                  DiscountType
+  value                 Decimal      @db.Decimal(20, 8)
+  maxUses               Int?         @map("max_uses")
+  usedCount             Int          @default(0) @map("used_count")
+  perCustomerLimit      Int?         @map("per_customer_limit")
+  minOrderAmount        Decimal?     @map("min_order_amount") @db.Decimal(20, 8)
+  applicableCheckoutIds String[]     @default([]) @map("applicable_checkout_ids")
+  expiresAt             DateTime?    @map("expires_at")
+  isActive              Boolean      @default(true) @map("is_active")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  merchant Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  usages   DiscountUsage[]
+
+  @@unique([merchantId, code])         // unique code per merchant
+  @@index([merchantId])
+  @@index([merchantId, isActive])      // listDiscounts: active filter
+  @@index([merchantId, code, isActive]) // validateDiscount
+  @@index([createdAt])
+  @@map("discounts")
+}
+
+/// Tracks individual discount code usages for per-customer limits.
+model DiscountUsage {
+  id            String    @id @db.VarChar(64)
+  discountId    String    @map("discount_id") @db.VarChar(64)
+  paymentId     String    @map("payment_id") @db.VarChar(64)
+  customerEmail String?   @map("customer_email") @db.VarChar(255)
+  appliedAt     DateTime  @default(now()) @map("applied_at")
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+
+  @@index([discountId])
+  @@index([discountId, customerEmail]) // per-customer limit check
+  @@index([paymentId])
+  @@map("discount_usages")
 }

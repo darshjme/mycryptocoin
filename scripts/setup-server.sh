@@ -287,6 +287,31 @@ echo "fail2ban configured"
 # 10. Kernel tuning for high-traffic
 # ---------------------------------------------------------------------------
 
+log "Enabling automatic security updates (unattended-upgrades)"
+
+apt-get install -y unattended-upgrades apt-listchanges
+
+cat > /etc/apt/apt.conf.d/20auto-upgrades << 'AUTOUPGRADE'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+AUTOUPGRADE
+
+# Only enable security updates, not feature updates
+cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'UNATTENDED'
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+};
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Mail "root";
+UNATTENDED
+
+echo "Unattended security upgrades enabled"
+
+# ---------------------------------------------------------------------------
+# 10. Kernel tuning for high-traffic
+# ---------------------------------------------------------------------------
+
 log "Tuning kernel parameters for high traffic"
 
 cat >> /etc/sysctl.conf << 'SYSCTL'
