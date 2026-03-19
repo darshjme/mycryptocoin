@@ -62,8 +62,6 @@ tags:
     description: Create, list, and verify crypto payments
   - name: Wallets
     description: View balances and configure auto-withdrawal
-  - name: Withdrawals
-    description: Withdraw crypto to external wallets
   - name: Transactions
     description: View unified transaction history
   - name: Webhooks
@@ -157,45 +155,47 @@ components:
     RegisterRequest:
       type: object
       required:
-        - whatsapp_number
+        - email
         - password
-        - business_name
-        - business_type
+        - businessName
+        - phone
       properties:
-        whatsapp_number:
-          type: string
-          description: WhatsApp number with country code
-          example: "+919876543210"
         email:
           type: string
           format: email
-          description: Business email address (optional but recommended)
+          description: Business email address
           example: merchant@example.com
         password:
           type: string
           format: password
           minLength: 8
-          description: "Minimum 8 characters, must include uppercase, lowercase, and number"
-          example: "SecurePass123"
-        business_name:
+          description: "Must include uppercase, lowercase, number, and special character (@$!%*?&#)"
+          example: "SecurePass123!"
+        businessName:
           type: string
           minLength: 2
           maxLength: 200
           description: Registered business name
           example: "Acme Digital Services"
-        business_type:
+        phone:
           type: string
-          enum:
-            - individual
-            - sole_proprietorship
-            - partnership
-            - llp
-            - private_limited
-            - public_limited
-            - trust
-            - ngo
-          description: Type of business entity
-          example: private_limited
+          description: "Phone in international format (e.g., +1234567890)"
+          example: "+919876543210"
+        whatsappNumber:
+          type: string
+          description: "Optional WhatsApp number in international format"
+          example: "+919876543210"
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: "ISO 2-letter country code"
+          example: "IN"
+        website:
+          type: string
+          format: uri
+          description: "Business website URL"
+          example: "https://acmedigital.com"
 
     RegisterResponse:
       type: object
@@ -231,21 +231,18 @@ components:
     LoginRequest:
       type: object
       required:
+        - email
         - password
       properties:
-        whatsapp_number:
-          type: string
-          description: WhatsApp number (use this OR email)
-          example: "+919876543210"
         email:
           type: string
           format: email
-          description: Email address (use this OR whatsapp_number)
+          description: Registered email address
           example: merchant@example.com
         password:
           type: string
           format: password
-          example: "SecurePass123"
+          example: "SecurePass123!"
 
     LoginResponse:
       type: object
@@ -282,18 +279,25 @@ components:
     VerifyOtpRequest:
       type: object
       required:
-        - whatsapp_number
+        - phone
         - otp
+        - purpose
       properties:
-        whatsapp_number:
+        phone:
           type: string
+          description: "Phone in international format"
           example: "+919876543210"
         otp:
           type: string
           minLength: 6
           maxLength: 6
-          description: 6-digit OTP sent to WhatsApp
+          description: 6-digit numeric OTP sent to WhatsApp
           example: "482916"
+        purpose:
+          type: string
+          enum: [registration, login, 2fa]
+          description: Purpose of the OTP verification
+          example: registration
 
     VerifyOtpResponse:
       type: object
@@ -320,11 +324,12 @@ components:
     RefreshTokenRequest:
       type: object
       required:
-        - refresh_token
+        - refreshToken
       properties:
-        refresh_token:
+        refreshToken:
           type: string
-          example: "mcc_rt_x7k9m2p4q8..."
+          description: Refresh token from previous login or refresh
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
     RefreshTokenResponse:
       type: object
@@ -345,11 +350,12 @@ components:
     ForgotPasswordRequest:
       type: object
       required:
-        - whatsapp_number
+        - email
       properties:
-        whatsapp_number:
+        email:
           type: string
-          example: "+919876543210"
+          format: email
+          example: "merchant@example.com"
 
     ForgotPasswordResponse:
       type: object
@@ -364,21 +370,19 @@ components:
     ResetPasswordRequest:
       type: object
       required:
-        - whatsapp_number
-        - otp
-        - new_password
+        - token
+        - password
       properties:
-        whatsapp_number:
+        token:
           type: string
-          example: "+919876543210"
-        otp:
-          type: string
-          example: "482916"
-        new_password:
+          description: Password reset token received via email
+          example: "reset_token_abc123"
+        password:
           type: string
           format: password
           minLength: 8
-          example: "NewSecurePass456"
+          description: "Must include uppercase, lowercase, number, and special character"
+          example: "NewSecurePass456!"
 
     ResetPasswordResponse:
       type: object
@@ -391,59 +395,69 @@ components:
     CreatePaymentRequest:
       type: object
       required:
-        - amount
-        - currency
         - crypto
+        - amount
       properties:
+        crypto:
+          type: string
+          description: Cryptocurrency symbol
+          enum: [BTC, ETH, USDT_ERC20, USDT_TRC20, BNB, SOL, MATIC, LTC, DOGE, XRP]
+          example: USDT_ERC20
         amount:
-          type: number
-          format: double
-          minimum: 0.01
-          description: Payment amount in the specified fiat currency
-          example: 99.99
+          type: string
+          description: "Payment amount as decimal string (must be > 0)"
+          example: "99.99"
         currency:
           type: string
           minLength: 3
           maxLength: 3
-          description: "ISO 4217 fiat currency code"
-          enum: [USD, EUR, GBP, INR, AED, SGD, AUD, CAD, JPY]
+          description: "ISO 4217 fiat currency code (default: USD)"
+          default: USD
           example: USD
-        crypto:
-          type: string
-          description: Cryptocurrency to accept
-          enum: [BTC, ETH, USDT, USDC, BNB, SOL, MATIC, DOGE, LTC, XRP, ADA, DOT, AVAX, TRX, LINK, UNI, SHIB, APE, ARB, OP]
-          example: USDT
         description:
           type: string
           maxLength: 500
           description: Description shown to the customer
           example: "Premium subscription - March 2026"
-        metadata:
-          type: object
-          additionalProperties:
-            type: string
-          maxProperties: 20
-          description: "Up to 20 key-value pairs for your internal reference"
-          example:
-            order_id: "ORD-12345"
-            customer_email: "buyer@example.com"
-        callback_url:
+        orderId:
+          type: string
+          maxLength: 100
+          description: Your internal order ID
+          example: "ORD-12345"
+        customerEmail:
+          type: string
+          format: email
+          description: Customer email address
+          example: "buyer@example.com"
+        customerName:
+          type: string
+          maxLength: 200
+          description: Customer name
+        callbackUrl:
           type: string
           format: uri
           description: URL to receive webhook notifications for this payment
           example: "https://yoursite.com/webhooks/crypto"
-        redirect_url:
+        redirectUrl:
           type: string
           format: uri
           description: URL to redirect the customer after payment
           example: "https://yoursite.com/order/success"
-        expiry_minutes:
+        expiryMinutes:
           type: integer
           minimum: 5
           maximum: 1440
           default: 30
           description: "Minutes before the payment expires (default: 30)"
           example: 30
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key-value pairs (string values) for your internal reference"
+          example:
+            order_id: "ORD-12345"
+            customer_email: "buyer@example.com"
 
     Payment:
       type: object
@@ -707,31 +721,21 @@ components:
     CreateWithdrawalRequest:
       type: object
       required:
-        - crypto
-        - amount
         - address
+        - amount
       properties:
-        crypto:
-          type: string
-          enum: [BTC, ETH, USDT, USDC, BNB, SOL, MATIC, DOGE, LTC, XRP, ADA, DOT, AVAX, TRX, LINK, UNI, SHIB, APE, ARB, OP]
-          example: BTC
-        amount:
-          type: string
-          description: Amount to withdraw (as string for precision)
-          example: "0.05000000"
         address:
           type: string
           description: Destination wallet address
           example: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
-        network:
+        amount:
           type: string
-          description: "Network to use (required for multi-network tokens like USDT)"
-          enum: [ethereum, tron, bsc, polygon, solana, arbitrum, optimism, avalanche, bitcoin, litecoin, dogecoin, ripple, cardano, polkadot]
-          example: bitcoin
+          description: "Amount to withdraw as decimal string (must be > 0)"
+          example: "0.05000000"
         memo:
           type: string
-          nullable: true
-          description: Memo/tag (required for XRP, used for some exchanges)
+          maxLength: 200
+          description: "Memo/tag (e.g., for XRP destination tag)"
           example: null
 
     Withdrawal:
@@ -886,10 +890,10 @@ components:
               - payment.created
               - payment.confirming
               - payment.confirmed
-              - payment.settled
+              - payment.completed
               - payment.failed
               - payment.expired
-              - withdrawal.processing
+              - withdrawal.initiated
               - withdrawal.completed
               - withdrawal.failed
               - "*"
@@ -1169,14 +1173,10 @@ components:
               - "payments:write"
               - "wallets:read"
               - "wallets:write"
-              - "withdrawals:read"
-              - "withdrawals:write"
-              - "webhooks:read"
-              - "webhooks:write"
-              - "merchant:read"
-              - "merchant:write"
               - "transactions:read"
-          description: "Scoped permissions (defaults to all if not specified)"
+              - "webhooks:manage"
+          minItems: 1
+          description: "At least one permission is required"
           example: ["payments:read", "payments:write", "wallets:read"]
 
     ApiKeyList:
@@ -1382,9 +1382,9 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /auth/verify-otp:
+  /auth/verify-whatsapp-otp:
     post:
-      operationId: verifyOtp
+      operationId: verifyWhatsappOtp
       tags: [Authentication]
       summary: Verify WhatsApp OTP
       description: |
@@ -1422,7 +1422,36 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /auth/refresh:
+  /auth/verify-email:
+    post:
+      operationId: verifyEmail
+      tags: [Authentication]
+      summary: Verify email address
+      description: Verify the merchant's email address using the token sent via email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: Email verification token
+      responses:
+        '200':
+          description: Email verified
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          description: Invalid or expired token
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/refresh-token:
     post:
       operationId: refreshToken
       tags: [Authentication]
@@ -1456,6 +1485,25 @@ paths:
                 error:
                   code: invalid_refresh_token
                   message: "Refresh token is invalid or has been revoked."
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [Authentication]
+      summary: Log out and invalidate session
+      description: Invalidate the current session. Requires Bearer token authentication.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successfully logged out
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1537,7 +1585,7 @@ paths:
   #  PAYMENTS
   # ═══════════════════════════════════════════════════════════════
 
-  /payments:
+  /payments/create:
     post:
       operationId: createPayment
       tags: [Payments]
@@ -1589,6 +1637,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /payments:
     get:
       operationId: listPayments
       tags: [Payments]
@@ -1602,25 +1651,31 @@ paths:
           in: query
           schema:
             type: string
-            enum: [pending, confirming, confirmed, settled, expired, failed, refunded]
+            enum: [PENDING, CONFIRMING, CONFIRMED, COMPLETED, EXPIRED, FAILED, REFUNDED]
           description: Filter by payment status
         - name: crypto
           in: query
           schema:
             type: string
-          description: Filter by cryptocurrency (e.g., BTC, ETH)
-        - name: date_from
+            enum: [BTC, ETH, USDT_ERC20, USDT_TRC20, BNB, SOL, MATIC, LTC, DOGE, XRP]
+          description: Filter by cryptocurrency symbol
+        - name: startDate
           in: query
           schema:
             type: string
-            format: date
-          description: "Start date (YYYY-MM-DD)"
-        - name: date_to
+            format: date-time
+          description: "Start date (ISO 8601)"
+        - name: endDate
           in: query
           schema:
             type: string
-            format: date
-          description: "End date (YYYY-MM-DD)"
+            format: date-time
+          description: "End date (ISO 8601)"
+        - name: orderId
+          in: query
+          schema:
+            type: string
+          description: Filter by your internal order ID
         - name: page
           in: query
           schema:
@@ -1832,26 +1887,26 @@ paths:
   #  WITHDRAWALS
   # ═══════════════════════════════════════════════════════════════
 
-  /withdrawals:
+  /wallets/{crypto}/withdraw:
     post:
       operationId: createWithdrawal
-      tags: [Withdrawals]
-      summary: Create a withdrawal
+      tags: [Wallets]
+      summary: Withdraw funds to an external address
       description: |
         Withdraw cryptocurrency from your MyCryptoCoin wallet to an external address.
-        Network fees are deducted from the withdrawal amount. Withdrawals are
-        processed within minutes for most networks.
-
-        **Minimum withdrawal amounts:**
-        - BTC: 0.0001
-        - ETH: 0.001
-        - USDT: 1.00
-        - USDC: 1.00
-        - SOL: 0.01
-        - Other: varies by network
+        The crypto type is specified in the URL path. Network fees are deducted from
+        the withdrawal amount.
       security:
         - BearerAuth: []
         - ApiKeyAuth: []
+      parameters:
+        - name: crypto
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [BTC, ETH, USDT_ERC20, USDT_TRC20, BNB, SOL, MATIC, LTC, DOGE, XRP]
+          description: Cryptocurrency symbol
       requestBody:
         required: true
         content:
@@ -1864,133 +1919,16 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Withdrawal'
         '400':
           description: Invalid request (bad address, insufficient balance, below minimum)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              examples:
-                insufficient_balance:
-                  value:
-                    error:
-                      code: insufficient_balance
-                      message: "Insufficient BTC balance. Available: 0.03000000, Requested: 0.05000000"
-                invalid_address:
-                  value:
-                    error:
-                      code: invalid_address
-                      message: "The provided address is not a valid Bitcoin address."
-                below_minimum:
-                  value:
-                    error:
-                      code: below_minimum
-                      message: "Minimum withdrawal for BTC is 0.0001."
-                      details:
-                        minimum: "0.0001"
-                        requested: "0.00005000"
         '401':
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-    get:
-      operationId: listWithdrawals
-      tags: [Withdrawals]
-      summary: List withdrawals
-      description: Retrieve a paginated list of withdrawals.
-      security:
-        - BearerAuth: []
-        - ApiKeyAuth: []
-      parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [pending, processing, completed, failed, cancelled]
-        - name: crypto
-          in: query
-          schema:
-            type: string
-        - name: date_from
-          in: query
-          schema:
-            type: string
-            format: date
-        - name: date_to
-          in: query
-          schema:
-            type: string
-            format: date
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 20
-            maximum: 100
-      responses:
-        '200':
-          description: List of withdrawals
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/X-RateLimit-Limit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/X-RateLimit-Remaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/X-RateLimit-Reset'
-            X-Request-Id:
-              $ref: '#/components/headers/X-Request-Id'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WithdrawalList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /withdrawals/{id}:
-    get:
-      operationId: getWithdrawal
-      tags: [Withdrawals]
-      summary: Get withdrawal details
-      description: Retrieve full details of a specific withdrawal.
-      security:
-        - BearerAuth: []
-        - ApiKeyAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Withdrawal details
-          headers:
-            X-Request-Id:
-              $ref: '#/components/headers/X-Request-Id'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Withdrawal'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -2083,9 +2021,10 @@ paths:
         Register a URL to receive webhook event notifications. A signing secret
         is generated and returned (shown only once). Use this secret to verify
         the authenticity of incoming webhook payloads via HMAC-SHA256 signature.
+
+        **Note:** Webhook management requires JWT Bearer token authentication (not API key).
       security:
         - BearerAuth: []
-        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -2116,7 +2055,6 @@ paths:
       description: Retrieve all registered webhook endpoints.
       security:
         - BearerAuth: []
-        - ApiKeyAuth: []
       responses:
         '200':
           description: List of webhooks
@@ -2140,7 +2078,6 @@ paths:
       description: Update the URL, events, or active status of a webhook.
       security:
         - BearerAuth: []
-        - ApiKeyAuth: []
       parameters:
         - name: id
           in: path
@@ -2179,7 +2116,6 @@ paths:
       description: Permanently delete a webhook endpoint. This cannot be undone.
       security:
         - BearerAuth: []
-        - ApiKeyAuth: []
       parameters:
         - name: id
           in: path
@@ -2217,7 +2153,6 @@ paths:
         Useful for verifying your endpoint is working correctly.
       security:
         - BearerAuth: []
-        - ApiKeyAuth: []
       parameters:
         - name: id
           in: path
@@ -2250,10 +2185,9 @@ paths:
       operationId: getMerchantProfile
       tags: [Merchant]
       summary: Get merchant profile
-      description: Retrieve the authenticated merchant's profile information.
+      description: Retrieve the authenticated merchant's profile information. Requires JWT Bearer token.
       security:
         - BearerAuth: []
-        - ApiKeyAuth: []
       responses:
         '200':
           description: Merchant profile
@@ -2273,10 +2207,9 @@ paths:
       operationId: updateMerchantProfile
       tags: [Merchant]
       summary: Update merchant profile
-      description: Update the authenticated merchant's profile. Only provided fields are updated.
+      description: Update the authenticated merchant's profile. Only provided fields are updated. Requires JWT Bearer token.
       security:
         - BearerAuth: []
-        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
