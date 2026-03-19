@@ -11,6 +11,9 @@ import { logger } from './utils/logger';
 
 const httpServer = createServer(app);
 
+// Store server reference on process for cluster graceful-drain support
+(process as any).__httpServer = httpServer;
+
 async function startServer(): Promise<void> {
   try {
     // Connect to database
@@ -48,12 +51,26 @@ async function startServer(): Promise<void> {
 }
 
 // ---------- Graceful Shutdown ----------
+let isShuttingDown = false;
+
 async function shutdown(signal: string): Promise<void> {
+  if (isShuttingDown) return; // Prevent double-shutdown
+  isShuttingDown = true;
+
   logger.info(`Received ${signal}. Starting graceful shutdown...`);
 
-  // Stop accepting new connections
-  httpServer.close(() => {
-    logger.info('HTTP server closed');
+  // Force exit after 30s if drain doesn't complete
+  const forceTimer = setTimeout(() => {
+    logger.error('Graceful shutdown timed out after 30s — force exiting');
+    process.exit(1);
+  }, 30_000).unref();
+
+  // Stop accepting new connections and drain in-flight requests
+  await new Promise<void>((resolve) => {
+    httpServer.close(() => {
+      logger.info('HTTP server closed — all in-flight requests drained');
+      resolve();
+    });
   });
 
   // Stop background processes
@@ -66,6 +83,14 @@ async function shutdown(signal: string): Promise<void> {
     wsServer.close();
   }
 
+  // Close job queues (waits for active jobs to finish)
+  try {
+    const { closeAllQueues } = require('./config/queue');
+    await closeAllQueues();
+  } catch {
+    // Queue module may not be loaded in all configurations
+  }
+
   // Disconnect WhatsApp
   await whatsappService.disconnect();
 
@@ -73,6 +98,7 @@ async function shutdown(signal: string): Promise<void> {
   await disconnectDatabase();
   await disconnectRedis();
 
+  clearTimeout(forceTimer);
   logger.info('Graceful shutdown complete');
   process.exit(0);
 }
