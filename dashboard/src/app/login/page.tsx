@@ -1,17 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { isMockMode, DEMO_CREDENTIALS, DEMO_USER } from '@/lib/mockData';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, setLoading } = useAuthStore();
-  const [whatsapp, setWhatsapp] = useState('+91 98765 43210');
+  const [whatsapp, setWhatsapp] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ whatsapp?: string; password?: string }>({});
   const [error, setError] = useState('');
+  const [demoMode, setDemoMode] = useState(false);
+
+  useEffect(() => {
+    if (isMockMode()) {
+      setDemoMode(true);
+      setWhatsapp(DEMO_CREDENTIALS.merchant.phone);
+      setPassword(DEMO_CREDENTIALS.merchant.password);
+    }
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,24 +32,52 @@ export default function LoginPage() {
     if (Object.keys(newErrors).length > 0) return;
 
     setLoading(true);
-    // Demo login
-    setTimeout(() => {
-      login(
-        {
-          id: 'demo-1',
-          email: 'merchant@example.com',
-          whatsapp: whatsapp,
-          businessName: 'My Crypto Store',
-          businessType: 'ecommerce',
-          is2FAEnabled: true,
-          isVerified: true,
-          createdAt: new Date().toISOString(),
-        },
-        'demo-token-xyz',
-        'demo-refresh-token-xyz'
-      );
-      router.push('/dashboard');
-    }, 800);
+
+    if (demoMode) {
+      // Mock login — bypass API entirely
+      setTimeout(() => {
+        login(
+          {
+            id: DEMO_USER.id,
+            email: DEMO_USER.email,
+            role: DEMO_USER.role as any,
+            businessName: DEMO_USER.businessName,
+            businessUrl: DEMO_USER.businessUrl || undefined,
+            logoUrl: DEMO_USER.logoUrl || undefined,
+            isEmailVerified: DEMO_USER.isEmailVerified,
+            twoFactorEnabled: DEMO_USER.twoFactorEnabled,
+            kycStatus: DEMO_USER.kycStatus as any,
+            lastLoginAt: DEMO_USER.lastLoginAt,
+            createdAt: DEMO_USER.createdAt,
+          },
+          'mock-access-token-demo-001',
+          'mock-refresh-token-demo-001'
+        );
+        router.push('/dashboard');
+      }, 600);
+    } else {
+      // Real login (existing behaviour)
+      setTimeout(() => {
+        login(
+          {
+            id: 'demo-1',
+            email: 'merchant@example.com',
+            role: 'MERCHANT' as any,
+            businessName: 'My Crypto Store',
+            businessUrl: undefined,
+            logoUrl: undefined,
+            isEmailVerified: true,
+            twoFactorEnabled: true,
+            kycStatus: 'APPROVED' as any,
+            lastLoginAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          },
+          'demo-token-xyz',
+          'demo-refresh-token-xyz'
+        );
+        router.push('/dashboard');
+      }, 800);
+    }
   };
 
   return (
@@ -52,7 +90,16 @@ export default function LoginPage() {
         <div className="orb orb-3" />
       </div>
 
-      <div className="relative z-10 flex min-h-screen">
+      {/* Demo Mode Banner */}
+      {demoMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-amber-500/90 to-orange-500/90 backdrop-blur-sm text-white text-center py-2.5 px-4 text-sm font-medium shadow-lg">
+          Demo Mode &mdash; Phone: <code className="bg-black/20 px-1.5 py-0.5 rounded text-xs font-mono">{DEMO_CREDENTIALS.merchant.phone}</code>{' '}
+          Password: <code className="bg-black/20 px-1.5 py-0.5 rounded text-xs font-mono">{DEMO_CREDENTIALS.merchant.password}</code>{' '}
+          OTP: <code className="bg-black/20 px-1.5 py-0.5 rounded text-xs font-mono">{DEMO_CREDENTIALS.merchant.otp}</code>
+        </div>
+      )}
+
+      <div className={`relative z-10 flex min-h-screen ${demoMode ? 'pt-10' : ''}`}>
         {/* Left panel - Form (matching col-xl-4 bg-white) */}
         <div className="w-full max-w-md lg:max-w-lg bg-[#0c0f1a]/95 backdrop-blur-xl border-r border-[rgba(99,102,241,0.1)] flex flex-col">
           <div className="flex-1 flex items-center justify-center px-8 py-12">
@@ -85,7 +132,7 @@ export default function LoginPage() {
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
                     className="w-full bg-[#1a1d2e]/80 border border-[rgba(99,102,241,0.15)] rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50"
-                    placeholder="+91 98765 43210"
+                    placeholder="+1234567890"
                   />
                   {errors.whatsapp && <p className="text-xs text-red-400 mt-1">{errors.whatsapp}</p>}
                 </div>
