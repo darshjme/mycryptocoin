@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 
 const RATE_CACHE_TTL = 60; // 60 seconds
 const RATE_CACHE_PREFIX = 'exchange_rate:';
+const FALLBACK_MAX_AGE_SECONDS = 300; // Refuse to use fallback rates older than 5 minutes
 const COINGECKO_IDS: Record<string, string> = {
   BTC: 'bitcoin',
   ETH: 'ethereum',
@@ -58,8 +59,29 @@ export class ConversionService {
       const data = await response.json();
       const priceUsd = data[coinId]?.usd;
 
-      if (!priceUsd) {
+      if (!priceUsd || typeof priceUsd !== 'number') {
         throw new Error(`No price data for ${symbol}`);
+      }
+
+      // Sanity check: reject obviously garbage rates
+      if (priceUsd <= 0) {
+        throw new Error(`Invalid exchange rate for ${symbol}: ${priceUsd} (non-positive)`);
+      }
+
+      // Guard against stale/broken data: if we have a fallback, reject >50% deviation
+      const fallbackRaw = await redis.get(`${RATE_CACHE_PREFIX}${symbol}_USDT:fallback`);
+      if (fallbackRaw) {
+        const fallbackRate = parseFloat(fallbackRaw);
+        if (fallbackRate > 0) {
+          const deviation = Math.abs(priceUsd - fallbackRate) / fallbackRate;
+          if (deviation > 0.5) {
+            logger.error(
+              `Exchange rate for ${symbol} deviated ${(deviation * 100).toFixed(1)}% from last known rate. ` +
+              `New: ${priceUsd}, Last: ${fallbackRate}. Rejecting and using fallback.`,
+            );
+            return new Decimal(fallbackRaw);
+          }
+        }
       }
 
       // USDT is pegged to USD, so USD price ~= USDT price

@@ -37,8 +37,45 @@ export const deleteApiKeyParamSchema = z.object({
   id: z.string().min(1, 'API key ID is required'),
 });
 
+/**
+ * SECURITY: Validate webhook URLs to prevent SSRF.
+ * Block internal/private IP ranges and cloud metadata endpoints.
+ */
+function isSafeWebhookUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Must be HTTPS in production
+    if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
+      return false;
+    }
+    // Block private/reserved hostnames and IPs
+    const hostname = parsed.hostname.toLowerCase();
+    const blockedPatterns = [
+      /^localhost$/,
+      /^127\./,
+      /^10\./,
+      /^172\.(1[6-9]|2\d|3[01])\./,
+      /^192\.168\./,
+      /^169\.254\./,           // AWS metadata
+      /^0\./,
+      /^fc00:/i,               // IPv6 private
+      /^fe80:/i,               // IPv6 link-local
+      /^::1$/,                 // IPv6 loopback
+      /^fd/i,                  // IPv6 unique local
+      /metadata\.google/,      // GCP metadata
+      /\.internal$/,
+      /\.local$/,
+    ];
+    return !blockedPatterns.some((p) => p.test(hostname));
+  } catch {
+    return false;
+  }
+}
+
 export const webhookSchema = z.object({
-  url: z.string().url('Invalid webhook URL'),
+  url: z.string().url('Invalid webhook URL').refine(isSafeWebhookUrl, {
+    message: 'Webhook URL must be a public HTTPS endpoint. Private/internal addresses are not allowed.',
+  }),
   events: z
     .array(
       z.enum([

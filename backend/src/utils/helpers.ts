@@ -33,9 +33,20 @@ export function generateApiKeySecret(): string {
 
 /**
  * Hash an API key for storage (only store hashed version).
+ * Uses HMAC-SHA256 with a pepper for pre-image resistance.
+ * SECURITY: The pepper MUST be set via API_KEY_PEPPER env var in production.
  */
 export function hashApiKey(key: string): string {
-  return crypto.createHash('sha256').update(key).digest('hex');
+  const pepper = process.env.API_KEY_PEPPER;
+  if (!pepper || pepper === 'mycryptocoin-default-pepper') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('API_KEY_PEPPER must be set in production — do not use the default pepper');
+    }
+  }
+  return crypto
+    .createHmac('sha256', pepper || 'mycryptocoin-default-pepper')
+    .update(key)
+    .digest('hex');
 }
 
 /**

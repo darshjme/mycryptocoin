@@ -7,8 +7,16 @@ import { logger } from '../utils/logger';
 
 let wsServer: WebSocketServer | null = null;
 
+// ---------------------------------------------------------------------------
+// Connection limits
+// ---------------------------------------------------------------------------
+const MAX_CONNECTIONS_PER_MERCHANT = 10;
+const MAX_CONNECTIONS_PER_IP = 20;
+
 export class WebSocketServer {
   private io: SocketIOServer;
+  private merchantConnectionCounts = new Map<string, number>();
+  private ipConnectionCounts = new Map<string, number>();
 
   constructor(httpServer: HttpServer) {
     this.io = new SocketIOServer(httpServer, {
@@ -20,6 +28,7 @@ export class WebSocketServer {
       pingTimeout: 60000,
       pingInterval: 25000,
       transports: ['websocket', 'polling'],
+      maxHttpBufferSize: 64 * 1024, // 64KB max message size (prevent memory abuse)
     });
 
     this.setupMiddleware();
@@ -27,6 +36,7 @@ export class WebSocketServer {
   }
 
   private setupMiddleware(): void {
+    // Auth middleware
     this.io.use((socket: Socket, next) => {
       const token =
         socket.handshake.auth?.token ||
@@ -44,12 +54,59 @@ export class WebSocketServer {
         next(new Error('Invalid authentication token'));
       }
     });
+
+    // Connection limit middleware — prevent resource exhaustion
+    this.io.use((socket: Socket, next) => {
+      const merchant = (socket as any).merchant as JwtPayload;
+      const ip = socket.handshake.address;
+
+      // Per-merchant limit
+      const merchantCount = this.merchantConnectionCounts.get(merchant.merchantId) || 0;
+      if (merchantCount >= MAX_CONNECTIONS_PER_MERCHANT) {
+        logger.warn('WebSocket connection limit per merchant exceeded', {
+          merchantId: merchant.merchantId,
+          count: merchantCount,
+        });
+        return next(new Error(`Connection limit exceeded: max ${MAX_CONNECTIONS_PER_MERCHANT} per merchant`));
+      }
+
+      // Per-IP limit
+      const ipCount = this.ipConnectionCounts.get(ip) || 0;
+      if (ipCount >= MAX_CONNECTIONS_PER_IP) {
+        logger.warn('WebSocket connection limit per IP exceeded', { ip, count: ipCount });
+        return next(new Error(`Connection limit exceeded: max ${MAX_CONNECTIONS_PER_IP} per IP`));
+      }
+
+      next();
+    });
+  }
+
+  private trackConnection(merchantId: string, ip: string): void {
+    this.merchantConnectionCounts.set(
+      merchantId,
+      (this.merchantConnectionCounts.get(merchantId) || 0) + 1,
+    );
+    this.ipConnectionCounts.set(ip, (this.ipConnectionCounts.get(ip) || 0) + 1);
+  }
+
+  private untrackConnection(merchantId: string, ip: string): void {
+    const mc = (this.merchantConnectionCounts.get(merchantId) || 1) - 1;
+    if (mc <= 0) this.merchantConnectionCounts.delete(merchantId);
+    else this.merchantConnectionCounts.set(merchantId, mc);
+
+    const ic = (this.ipConnectionCounts.get(ip) || 1) - 1;
+    if (ic <= 0) this.ipConnectionCounts.delete(ip);
+    else this.ipConnectionCounts.set(ip, ic);
   }
 
   private setupHandlers(): void {
     this.io.on('connection', (socket: Socket) => {
       const merchant = (socket as any).merchant as JwtPayload;
       const merchantRoom = `merchant:${merchant.merchantId}`;
+      const ip = socket.handshake.address;
+
+      // Track connection counts
+      this.trackConnection(merchant.merchantId, ip);
 
       // Join merchant-specific room
       socket.join(merchantRoom);
@@ -81,6 +138,7 @@ export class WebSocketServer {
       });
 
       socket.on('disconnect', (reason) => {
+        this.untrackConnection(merchant.merchantId, ip);
         logger.info(
           `WebSocket disconnected: merchant ${merchant.merchantId} (reason: ${reason})`,
         );

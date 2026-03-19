@@ -14,7 +14,12 @@ export class WhatsAppService {
   private socket: WASocket | null = null;
   private qrCode: string | null = null;
   private isConnected: boolean = false;
-  private connectionListeners: Array<(state: Partial<ConnectionState>) => void> = [];
+  private connectionListeners: Set<(state: Partial<ConnectionState>) => void> = new Set();
+  private reconnectAttempts: number = 0;
+  private static readonly MAX_RECONNECT_ATTEMPTS = 10;
+  private static readonly BASE_RECONNECT_DELAY_MS = 2000;
+  private static readonly MAX_RECONNECT_DELAY_MS = 60000;
+  private static readonly MAX_LISTENERS = 50;
 
   async initialize(): Promise<void> {
     if (!env.WHATSAPP_ENABLED) {
@@ -30,7 +35,6 @@ export class WhatsAppService {
       this.socket = makeWASocket({
         auth: state,
         printQRInTerminal: true,
-        logger: undefined as any,
         browser: ['MyCryptoCoin', 'Server', '1.0.0'],
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
@@ -54,8 +58,24 @@ export class WhatsAppService {
           logger.warn(`WhatsApp connection closed (status: ${statusCode})`);
 
           if (shouldReconnect) {
-            logger.info('Reconnecting to WhatsApp...');
-            setTimeout(() => this.initialize(), 5000);
+            if (this.reconnectAttempts >= WhatsAppService.MAX_RECONNECT_ATTEMPTS) {
+              logger.error(
+                `WhatsApp max reconnect attempts (${WhatsAppService.MAX_RECONNECT_ATTEMPTS}) reached — giving up`,
+              );
+              return;
+            }
+
+            const delay = Math.min(
+              WhatsAppService.BASE_RECONNECT_DELAY_MS *
+                Math.pow(2, this.reconnectAttempts),
+              WhatsAppService.MAX_RECONNECT_DELAY_MS,
+            );
+            this.reconnectAttempts++;
+
+            logger.info(
+              `Reconnecting to WhatsApp in ${delay}ms (attempt ${this.reconnectAttempts}/${WhatsAppService.MAX_RECONNECT_ATTEMPTS})`,
+            );
+            setTimeout(() => this.initialize(), delay);
           } else {
             logger.warn('WhatsApp logged out — manual re-initialization required');
           }
@@ -64,12 +84,17 @@ export class WhatsAppService {
         if (connection === 'open') {
           this.isConnected = true;
           this.qrCode = null;
+          this.reconnectAttempts = 0;
           logger.info('WhatsApp connected successfully');
         }
 
         // Notify listeners
         for (const listener of this.connectionListeners) {
-          listener(update);
+          try {
+            listener(update);
+          } catch (err) {
+            logger.error('WhatsApp connection listener threw', { error: err });
+          }
         }
       });
     } catch (error) {
@@ -112,6 +137,10 @@ export class WhatsAppService {
     }
 
     const jid = this.formatJid(phone);
+    if (!jid) {
+      logger.warn('Invalid phone number format for WhatsApp OTP');
+      return false;
+    }
 
     try {
       await this.socket.sendMessage(jid, {
@@ -122,11 +151,11 @@ export class WhatsAppService {
           `Do not share this code with anyone.`,
       });
 
-      logger.info(`WhatsApp OTP sent to ${phone}`);
+      const maskedPhone = phone.slice(0, 4) + '****' + phone.slice(-2);
+      logger.info(`WhatsApp OTP sent to ${maskedPhone}`);
       return true;
     } catch (error) {
       logger.error('Failed to send WhatsApp OTP', {
-        phone,
         error: (error as Error).message,
       });
       return false;
@@ -236,7 +265,15 @@ export class WhatsAppService {
    * Add a connection state listener.
    */
   onConnectionUpdate(listener: (state: Partial<ConnectionState>) => void): void {
-    this.connectionListeners.push(listener);
+    if (this.connectionListeners.size >= WhatsAppService.MAX_LISTENERS) {
+      logger.warn('WhatsApp connection listener limit reached, ignoring new listener');
+      return;
+    }
+    this.connectionListeners.add(listener);
+  }
+
+  removeConnectionListener(listener: (state: Partial<ConnectionState>) => void): void {
+    this.connectionListeners.delete(listener);
   }
 
   /**
@@ -255,9 +292,12 @@ export class WhatsAppService {
   /**
    * Format a phone number to a WhatsApp JID.
    */
-  private formatJid(phone: string): string {
-    // Remove '+' prefix and add @s.whatsapp.net
-    const cleaned = phone.replace(/\+/g, '').replace(/[^0-9]/g, '');
+  private formatJid(phone: string): string | null {
+    // Remove '+' prefix and non-digit characters, validate E.164-ish format
+    const cleaned = phone.replace(/[^0-9]/g, '');
+    if (cleaned.length < 7 || cleaned.length > 15) {
+      return null;
+    }
     return `${cleaned}@s.whatsapp.net`;
   }
 }

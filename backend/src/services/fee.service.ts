@@ -19,9 +19,10 @@ export class FeeService {
     netAmount: Decimal;
     feeAmount: Decimal;
   } {
+    // USDT TRC-20 has 6 decimal places — round fee UP so platform never loses
     const feeAmount = grossAmount
       .mul(this.feeRate)
-      .toDecimalPlaces(18, Decimal.ROUND_UP);
+      .toDecimalPlaces(6, Decimal.ROUND_UP);
 
     const netAmount = grossAmount.sub(feeAmount);
 

@@ -83,8 +83,19 @@ export class WithdrawalService {
       },
     });
 
-    // Debit from merchant's USDT balance immediately (reserve funds)
-    await walletService.debitBalance(merchantId, network, token, amount);
+    // SECURITY: Debit from merchant's USDT balance immediately (reserve funds).
+    // The debitBalance method uses an atomic WHERE balance >= amount guard,
+    // so concurrent requests cannot overdraw. If it fails, clean up the
+    // withdrawal record to avoid orphaned PENDING entries.
+    try {
+      await walletService.debitBalance(merchantId, network, token, amount);
+    } catch (err) {
+      await prisma.withdrawal.update({
+        where: { id: withdrawal.id },
+        data: { status: WithdrawalStatus.FAILED, reviewNote: 'Insufficient balance at debit time' },
+      });
+      throw err;
+    }
 
     // Queue for processing
     await redis.lpush(
@@ -133,30 +144,40 @@ export class WithdrawalService {
         error,
       });
 
-      // Update status to FAILED
-      await prisma.withdrawal.update({
-        where: { id: data.withdrawalId },
+      // Atomic idempotent refund: only refund if status transitions to FAILED.
+      // If already FAILED (e.g., duplicate queue delivery), updateMany matches 0 rows → no double-refund.
+      const updated = await prisma.withdrawal.updateMany({
+        where: {
+          id: data.withdrawalId,
+          status: { not: WithdrawalStatus.FAILED },
+        },
         data: {
           status: WithdrawalStatus.FAILED,
           reviewNote: (error as Error).message,
         },
       });
 
-      // Refund the balance
-      const network = data.network as CryptoNetwork;
-      const token = data.token as TokenSymbol;
-      await walletService.creditBalance(
-        data.merchantId,
-        network,
-        token,
-        new Decimal(data.amount),
-      );
+      if (updated.count > 0) {
+        // Only refund if we actually transitioned to FAILED (first time)
+        const network = data.network as CryptoNetwork;
+        const token = data.token as TokenSymbol;
+        await walletService.creditBalance(
+          data.merchantId,
+          network,
+          token,
+          new Decimal(data.amount),
+        );
 
-      // Notify
-      await webhookService.dispatch(data.merchantId, 'withdrawal.failed', {
-        withdrawalId: data.withdrawalId,
-        error: (error as Error).message,
-      });
+        // Notify
+        await webhookService.dispatch(data.merchantId, 'withdrawal.failed', {
+          withdrawalId: data.withdrawalId,
+          error: (error as Error).message,
+        });
+      } else {
+        logger.warn(
+          `Withdrawal ${data.withdrawalId} already marked FAILED — skipping duplicate refund`,
+        );
+      }
     }
   }
 

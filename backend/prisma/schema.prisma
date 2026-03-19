@@ -162,6 +162,8 @@ model Merchant {
   auditLogs        AuditLog[]
   fraudAlerts      FraudAlert[]
   kycSubmissions   KycSubmission[]
+  conversions      Conversion[]
+  feeDisbursements FeeDisbursement[]
 
   @@index([email])
   @@index([phone])
@@ -256,6 +258,7 @@ model Payment {
   wallet       Wallet?       @relation(fields: [walletId], references: [id])
   feeRecord    FeeRecord?
   transactions Transaction[]
+  conversion   Conversion?
 
   @@index([merchantId])
   @@index([orderId])
@@ -711,4 +714,151 @@ model IpWhitelist {
   @@unique([adminId, ipAddress])
   @@index([adminId])
   @@map("ip_whitelist")
+}
+
+// ──────────────────────────────────────────────
+// Crypto-to-USDT Conversion Engine
+// ──────────────────────────────────────────────
+
+/// Tracks every conversion from received crypto to USDT.
+/// Full audit trail: rates, fees, tx hashes, timestamps.
+model Conversion {
+  id              String   @id @default(cuid())
+  paymentId       String   @unique @map("payment_id") @db.VarChar(64)
+  payment         Payment  @relation(fields: [paymentId], references: [id])
+  merchantId      String   @map("merchant_id") @db.Uuid
+  merchant        Merchant @relation(fields: [merchantId], references: [id])
+
+  // What was received
+  sourceCrypto    String   @map("source_crypto") @db.VarChar(20)  // BTC, ETH, SOL, etc.
+  sourceNetwork   String   @map("source_network") @db.VarChar(30) // BITCOIN, ETHEREUM, SOLANA, etc.
+  sourceAmount    Decimal  @map("source_amount") @db.Decimal(30, 18)
+  sourceAddress   String   @map("source_address") @db.VarChar(255) // address that received the crypto
+  sourceTxHash    String?  @map("source_tx_hash") @db.VarChar(255) // blockchain tx hash of incoming payment
+
+  // Exchange rate at conversion time
+  exchangeRate    Decimal  @map("exchange_rate") @db.Decimal(20, 8) // 1 crypto = X USDT
+  rateSource      String   @map("rate_source") @db.VarChar(50) // 'coingecko', 'binance', 'kraken', 'median'
+  rateTimestamp   DateTime @map("rate_timestamp") // when the rate was fetched
+
+  // Conversion execution
+  conversionMethod  String   @map("conversion_method") @db.VarChar(50) // 'cex_binance', 'cex_kraken', 'dex_1inch', 'dex_jupiter', 'passthrough', 'virtual'
+  conversionTxHash  String?  @map("conversion_tx_hash") @db.VarChar(255) // tx hash of the swap (DEX) or trade ID (CEX)
+  conversionFee     Decimal  @map("conversion_fee") @db.Decimal(20, 8) // gas/swap fee in USDT
+  conversionFeePaidBy String @default("customer") @map("conversion_fee_paid_by") @db.VarChar(20) // 'customer' or 'platform'
+  slippage          Decimal? @db.Decimal(10, 4) // actual slippage %
+
+  // What was converted to
+  targetCrypto    String   @default("USDT") @map("target_crypto") @db.VarChar(20)
+  targetNetwork   String   @default("TRON") @map("target_network") @db.VarChar(30)
+  grossUsdtAmount Decimal  @map("gross_usdt_amount") @db.Decimal(20, 8) // before any fees
+  netUsdtAmount   Decimal  @map("net_usdt_amount") @db.Decimal(20, 8) // after conversion fee
+
+  // Platform fee
+  platformFeeRate   Decimal  @default(0.005) @map("platform_fee_rate") @db.Decimal(10, 6) // 0.5%
+  platformFeeAmount Decimal  @map("platform_fee_amount") @db.Decimal(20, 8) // actual fee in USDT
+  platformFeeTxHash String?  @map("platform_fee_tx_hash") @db.VarChar(255) // tx hash of fee transfer to owner wallet
+
+  // What merchant gets
+  merchantCredited  Decimal  @map("merchant_credited") @db.Decimal(20, 8) // netUsdtAmount - platformFeeAmount
+
+  // Status tracking
+  status          String   @default("PENDING") @db.VarChar(30) // PENDING, SWEEPING, SWAPPING, SETTLING, COMPLETED, FAILED
+  failureReason   String?  @map("failure_reason") @db.Text
+
+  // Timestamps
+  receivedAt      DateTime @map("received_at") // when crypto was received
+  sweepStartedAt  DateTime? @map("sweep_started_at") // when sweep to exchange started
+  sweepTxHash     String?   @map("sweep_tx_hash") @db.VarChar(255) // tx hash of sweep to exchange
+  swapStartedAt   DateTime? @map("swap_started_at") // when exchange swap started
+  swapCompletedAt DateTime? @map("swap_completed_at") // when swap completed
+  settledAt       DateTime? @map("settled_at") // when USDT credited to merchant
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  feeDisbursements FeeDisbursement[]
+
+  @@index([merchantId])
+  @@index([status])
+  @@index([paymentId])
+  @@index([createdAt])
+  @@map("conversions")
+}
+
+/// Tracks exchange/DEX configurations with encrypted API keys.
+model ExchangeConfig {
+  id                  String  @id @default(cuid())
+  name                String  @unique @db.VarChar(50) // 'binance', 'kraken', '1inch', 'jupiter'
+  type                String  @db.VarChar(10) // 'cex' or 'dex'
+  isActive            Boolean @default(true) @map("is_active")
+  priority            Int     @default(0) // higher = preferred
+  apiKeyEncrypted     String? @map("api_key_encrypted") @db.Text // AES-256-GCM encrypted
+  apiSecretEncrypted  String? @map("api_secret_encrypted") @db.Text
+  depositAddresses    Json?   @map("deposit_addresses") // { BTC: 'addr', ETH: 'addr', ... }
+  config              Json?   // exchange-specific config
+  maxSlippage         Decimal @default(0.5) @map("max_slippage") @db.Decimal(10, 4) // max 0.5%
+  minAmount           Decimal @default(0) @map("min_amount") @db.Decimal(20, 8) // min amount to process
+  maxAmount           Decimal @default(1000000) @map("max_amount") @db.Decimal(20, 8) // max per trade
+  dailyVolume         Decimal @default(0) @map("daily_volume") @db.Decimal(20, 8) // tracked daily volume
+  dailyLimit          Decimal @default(10000000) @map("daily_limit") @db.Decimal(20, 8) // daily limit
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("exchange_configs")
+}
+
+/// Exchange rate history for auditing and compliance.
+model ExchangeRateLog {
+  id          String   @id @default(cuid())
+  crypto      String   @db.VarChar(20) // BTC, ETH, etc.
+  usdtRate    Decimal  @map("usdt_rate") @db.Decimal(20, 8)
+  source      String   @db.VarChar(50) // 'coingecko', 'binance', etc.
+  fetchedAt   DateTime @default(now()) @map("fetched_at")
+
+  @@index([crypto, fetchedAt])
+  @@index([fetchedAt])
+  @@map("exchange_rate_logs")
+}
+
+/// Platform fee disbursements to owner wallet.
+model FeeDisbursement {
+  id              String   @id @default(cuid())
+  conversionId    String?  @map("conversion_id")
+  conversion      Conversion? @relation(fields: [conversionId], references: [id])
+  merchantId      String?  @map("merchant_id") @db.Uuid
+  merchant        Merchant? @relation(fields: [merchantId], references: [id])
+
+  amount          Decimal  @db.Decimal(20, 8) // USDT amount
+  ownerAddress    String   @map("owner_address") @db.VarChar(255) // TRON address of owner
+  txHash          String?  @map("tx_hash") @db.VarChar(255) // TRC-20 transfer tx hash
+  status          String   @default("PENDING") @db.VarChar(20) // PENDING, SENT, CONFIRMED, FAILED
+  failureReason   String?  @map("failure_reason") @db.Text
+  sentAt          DateTime? @map("sent_at")
+  confirmedAt     DateTime? @map("confirmed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([merchantId])
+  @@map("fee_disbursements")
+}
+
+/// Hot wallet sweep records — tracks crypto movement from payment addresses to exchanges/hot wallets.
+model WalletSweepRecord {
+  id              String   @id @default(cuid())
+  fromAddress     String   @map("from_address") @db.VarChar(255)
+  toAddress       String   @map("to_address") @db.VarChar(255) // exchange deposit or hot wallet
+  crypto          String   @db.VarChar(20)
+  network         String   @db.VarChar(30)
+  amount          Decimal  @db.Decimal(30, 18)
+  txHash          String?  @map("tx_hash") @db.VarChar(255)
+  networkFee      Decimal? @map("network_fee") @db.Decimal(20, 8)
+  status          String   @default("PENDING") @db.VarChar(20) // PENDING, BROADCAST, CONFIRMED, FAILED
+  purpose         String   @db.VarChar(50) // 'exchange_deposit', 'hot_to_cold', 'consolidation'
+  createdAt       DateTime @default(now()) @map("created_at")
+  confirmedAt     DateTime? @map("confirmed_at")
+
+  @@index([status])
+  @@index([crypto])
+  @@map("wallet_sweep_records")
 }

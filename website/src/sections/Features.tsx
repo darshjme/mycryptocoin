@@ -11,15 +11,33 @@ const features = [
   },
   {
     iconClass: 'fa-solid fa-bolt-lightning',
-    title: 'Instant USDT Settlement',
+    title: 'Lightning Network',
     description:
-      'Funds settle in USDT within minutes. Withdraw anytime to your TRON wallet. Ultra-low network fees (~$1). No more waiting days.',
+      'Near-instant Bitcoin payments via Lightning Network. Sub-3-second settlement, near-zero fees. BOLT11 invoice support for the fastest BTC experience.',
   },
   {
     iconClass: 'fa-solid fa-shield-halved',
     title: 'Enterprise Security',
     description:
       'End-to-end encryption, HMAC webhook signatures, WhatsApp-based 2FA, multi-sig withdrawals, and proof of reserves.',
+  },
+  {
+    iconClass: 'fa-solid fa-file-invoice-dollar',
+    title: 'Invoices & Refunds',
+    description:
+      'Generate professional invoices with line items, tax calculation, and PDF export. Full and partial refund support in original crypto or USDT.',
+  },
+  {
+    iconClass: 'fa-solid fa-palette',
+    title: 'White-Label Checkout',
+    description:
+      'Customize checkout with your logo, colors, and domain. Embeddable popup, inline, or full-page modes. Remove MyCryptoCoin branding entirely.',
+  },
+  {
+    iconClass: 'fa-solid fa-language',
+    title: '40+ Languages & 30+ Cryptos',
+    description:
+      'Support for 30+ cryptocurrencies including BTC, ETH, SOL, MATIC, AVAX, DOT, ADA, and L2s (Arbitrum, Optimism, Base). Multi-language checkout in 40+ languages with RTL support.',
   },
 ];
 
@@ -54,17 +72,19 @@ export default function Features() {
             The Most Powerful <span className="text-gradient">Crypto Payment</span>
             <br className="hidden md:block" /> Gateway for Your Business
           </h2>
+          <p className="text-gray-400 mt-4 max-w-2xl mx-auto">
+            Everything Boxcoin has, plus Lightning Network, invoices, refunds, white-label checkout,
+            discount codes, Shopify integration, and 30+ cryptocurrencies.
+          </p>
         </div>
 
-        {/* 3-column grid */}
+        {/* 3x2 grid */}
         <div className="grid md:grid-cols-3 gap-8">
           {features.map((feature, i) => (
             <div
               key={i}
               data-aos="fade-up"
-              className={`glass-card rounded-2xl p-8 text-center group ${
-                i === 1 ? 'md:border-x md:border-y-0 md:rounded-none md:border-white/5' : ''
-              }`}
+              className="glass-card rounded-2xl p-8 text-center group hover:border-white/10 transition-all"
             >
               <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300" style={{ background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)' }}>
                 <i className={`${feature.iconClass} text-white text-2xl`} style={{ fontSize: '28px' }} />

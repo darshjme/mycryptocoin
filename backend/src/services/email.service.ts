@@ -2,6 +2,19 @@ import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 
+/**
+ * SECURITY: Escape HTML entities in user-supplied strings before
+ * embedding in email templates to prevent HTML injection / XSS.
+ */
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -32,7 +45,7 @@ export class EmailService {
       subject: 'Verify Your Email — MyCryptoCoin',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #1a1a2e;">Welcome to MyCryptoCoin, ${businessName}!</h1>
+          <h1 style="color: #1a1a2e;">Welcome to MyCryptoCoin, ${escapeHtml(businessName)}!</h1>
           <p>Please verify your email address to complete your registration.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${verifyUrl}"

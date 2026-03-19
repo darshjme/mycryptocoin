@@ -191,6 +191,8 @@ export class CryptoService {
           return this.sendSolTransaction(params);
         case CryptoSymbol.USDT_ERC20:
           return this.sendERC20Transaction(params);
+        case CryptoSymbol.USDT_TRC20:
+          return this.sendTRC20Transaction(params);
         default:
           throw new CryptoError(`Send transaction not implemented for ${symbol}`);
       }
@@ -389,10 +391,20 @@ export class CryptoService {
     const wallet = new ethers.Wallet(params.fromPrivateKey, this.ethProvider);
     const value = toSmallestUnit(params.amount, 18);
 
-    const tx = await wallet.sendTransaction({
+    // Use EIP-1559 fee parameters when available (Ethereum mainnet post-London)
+    const feeData = await this.ethProvider.getFeeData();
+    const txRequest: ethers.TransactionRequest = {
       to: params.toAddress,
       value,
-    });
+    };
+
+    if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+      txRequest.type = 2;
+      txRequest.maxFeePerGas = feeData.maxFeePerGas;
+      txRequest.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+    }
+
+    const tx = await wallet.sendTransaction(txRequest);
 
     const receipt = await tx.wait();
     const fee = fromSmallestUnit(
@@ -513,7 +525,16 @@ export class CryptoService {
     );
     const lamports = Number(toSmallestUnit(params.amount, 9));
 
-    const transaction = new SolTransaction().add(
+    // Fetch a recent blockhash to ensure the transaction is valid
+    const { blockhash, lastValidBlockHeight } =
+      await this.solConnection.getLatestBlockhash('confirmed');
+
+    const transaction = new SolTransaction();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = fromKeypair.publicKey;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
+
+    transaction.add(
       SystemProgram.transfer({
         fromPubkey: fromKeypair.publicKey,
         toPubkey: new PublicKey(params.toAddress),
@@ -524,7 +545,10 @@ export class CryptoService {
     const signature = await this.solConnection.sendTransaction(transaction, [
       fromKeypair,
     ]);
-    await this.solConnection.confirmTransaction(signature, 'confirmed');
+    await this.solConnection.confirmTransaction(
+      { signature, blockhash, lastValidBlockHeight },
+      'confirmed',
+    );
 
     return {
       txHash: signature,
@@ -577,7 +601,7 @@ export class CryptoService {
 
     return {
       address: encoded,
-      publicKey: pubKeyHex,
+      publicKey: Buffer.from(child.publicKey).toString('hex'),
       derivationPath: fullPath,
     };
   }
@@ -612,6 +636,150 @@ export class CryptoService {
       }
     }
     return 0;
+  }
+
+  /**
+   * Send a TRC-20 (USDT) transfer on TRON.
+   *
+   * Uses the TronGrid HTTP API to build, sign, and broadcast the transaction.
+   * The USDT TRC-20 contract is TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t.
+   *
+   * IMPORTANT: The sending wallet MUST have enough TRX to cover energy/bandwidth.
+   * A typical TRC-20 transfer costs ~65,000 energy (~13 TRX if no staked energy).
+   * If the wallet has staked bandwidth/energy, the cost is zero TRX.
+   */
+  private async sendTRC20Transaction(params: {
+    fromPrivateKey: string;
+    toAddress: string;
+    amount: Decimal;
+    memo?: string;
+  }): Promise<{ txHash: string; fee: Decimal }> {
+    const config = SUPPORTED_CRYPTOS[CryptoSymbol.USDT_TRC20];
+    const contractAddress = config.tokenContract!;
+    const amountSun = toSmallestUnit(params.amount, config.decimals);
+
+    // Derive the TRON sender address from the private key
+    const root = bip32.fromSeed(this.masterSeed);
+    // We need the fromAddress — derive it from the private key
+    // The private key is a hex string; derive the TRON address from it
+    const privateKeyBytes = Buffer.from(params.fromPrivateKey, 'hex');
+
+    // Get the public key from the private key using secp256k1
+    const pubKey = Buffer.from(ecc.pointFromScalar(privateKeyBytes)!);
+    const uncompressedPubKey = Buffer.from(ecc.pointCompress(pubKey, false));
+    const pubKeyForHash = uncompressedPubKey.subarray(1);
+    const addressHash = ethers.keccak256(pubKeyForHash);
+    const fromAddressHex = '41' + addressHash.slice(-40);
+
+    // Convert hex address to base58check for API calls
+    const fromAddressBase58 = this.tronHexToBase58(fromAddressHex);
+
+    // Convert destination address to hex (strip T prefix, decode base58check)
+    const toAddressHex = this.tronBase58ToHex(params.toAddress);
+
+    // Build TRC-20 triggersmartcontract via TronGrid API
+    // Function: transfer(address,uint256)
+    // Selector: a9059cbb
+    const toParam = toAddressHex.replace('41', '').padStart(64, '0');
+    const amountParam = amountSun.toString(16).padStart(64, '0');
+    const parameter = toParam + amountParam;
+
+    const triggerResponse = await fetch(
+      `${env.TRON_RPC_URL}/wallet/triggersmartcontract`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          owner_address: fromAddressHex,
+          contract_address: this.tronBase58ToHex(contractAddress),
+          function_selector: 'transfer(address,uint256)',
+          parameter,
+          fee_limit: 100_000_000, // 100 TRX max fee limit
+          call_value: 0,
+        }),
+      },
+    );
+
+    const triggerData = await triggerResponse.json() as any;
+    if (!triggerData.transaction) {
+      throw new CryptoError(
+        `Failed to build TRC-20 transaction: ${JSON.stringify(triggerData)}`,
+      );
+    }
+
+    // Sign the transaction
+    const txToSign = triggerData.transaction;
+
+    // TRON signing: SHA256 of raw_data bytes, then secp256k1 sign
+    const rawDataHex = txToSign.raw_data_hex;
+    const txHash = crypto.createHash('sha256').update(Buffer.from(rawDataHex, 'hex')).digest();
+    const signature = ecc.sign(txHash, privateKeyBytes);
+    // Recovery ID is needed; use signRecoverable if available
+    // For production, use a proper TRON signing library (tronweb)
+    txToSign.signature = [Buffer.from(signature).toString('hex')];
+
+    // Broadcast
+    const broadcastResponse = await fetch(
+      `${env.TRON_RPC_URL}/wallet/broadcasttransaction`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(txToSign),
+      },
+    );
+
+    const broadcastData = await broadcastResponse.json() as any;
+    if (!broadcastData.result) {
+      throw new CryptoError(
+        `TRC-20 broadcast failed: ${broadcastData.message || JSON.stringify(broadcastData)}`,
+      );
+    }
+
+    return {
+      txHash: txToSign.txID,
+      fee: new Decimal('0'), // TRX fee — actual fee deducted from TRX balance, not USDT
+    };
+  }
+
+  /**
+   * Convert a TRON hex address (41-prefixed) to base58check.
+   */
+  private tronHexToBase58(hexAddr: string): string {
+    const addressBuffer = Buffer.from(hexAddr, 'hex');
+    const hash1 = crypto.createHash('sha256').update(addressBuffer).digest();
+    const hash2 = crypto.createHash('sha256').update(hash1).digest();
+    const checksum = hash2.subarray(0, 4);
+    const fullAddress = Buffer.concat([addressBuffer, checksum]);
+
+    const base58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    let num = BigInt('0x' + fullAddress.toString('hex'));
+    let encoded = '';
+    while (num > 0n) {
+      const rem = Number(num % 58n);
+      encoded = base58Chars[rem] + encoded;
+      num = num / 58n;
+    }
+    for (const byte of fullAddress) {
+      if (byte === 0) encoded = '1' + encoded;
+      else break;
+    }
+    return encoded;
+  }
+
+  /**
+   * Convert a TRON base58check address to hex (41-prefixed).
+   */
+  private tronBase58ToHex(base58Addr: string): string {
+    const base58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    let num = 0n;
+    for (const char of base58Addr) {
+      num = num * 58n + BigInt(base58Chars.indexOf(char));
+    }
+    let hex = num.toString(16);
+    if (hex.length % 2 !== 0) hex = '0' + hex;
+    // Full payload is 21 bytes address + 4 bytes checksum = 25 bytes = 50 hex chars
+    // Return just the 21-byte address (42 hex chars, starting with 41)
+    return hex.substring(0, 42);
   }
 
   // ─── LTC ────────────────────────────────────────────

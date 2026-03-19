@@ -41,8 +41,13 @@ const envSchema = z.object({
   DOGE_RPC_URL: z.string().default('https://dogechain.info/api/v1'),
   XRP_RPC_URL: z.string().default('https://s1.ripple.com:51234'),
 
-  // HD Wallet master seed (encrypted in production)
-  HD_MASTER_SEED: z.string().default('0'.repeat(64)),
+  // HD Wallet master seed — MUST be set explicitly, never use a default.
+  // SECURITY: A default seed would allow anyone to derive all wallet keys.
+  HD_MASTER_SEED: z.string().min(64, 'HD_MASTER_SEED must be a 64-character hex string (32 bytes)')
+    .refine(
+      (val) => val !== '0'.repeat(64) || process.env.NODE_ENV === 'test',
+      'HD_MASTER_SEED must not be all zeros in non-test environments',
+    ),
 
   // Fee configuration
   PLATFORM_FEE_PERCENT: z.coerce.number().default(0.5),
