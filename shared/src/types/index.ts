@@ -68,10 +68,12 @@ export enum KycStatus {
 
 export enum WebhookEvent {
   PAYMENT_CREATED = "payment.created",
+  PAYMENT_CONFIRMING = "payment.confirming",
   PAYMENT_CONFIRMED = "payment.confirmed",
   PAYMENT_COMPLETED = "payment.completed",
   PAYMENT_EXPIRED = "payment.expired",
   PAYMENT_FAILED = "payment.failed",
+  WITHDRAWAL_INITIATED = "withdrawal.initiated",
   WITHDRAWAL_COMPLETED = "withdrawal.completed",
   WITHDRAWAL_FAILED = "withdrawal.failed",
 }

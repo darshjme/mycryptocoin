@@ -6,21 +6,25 @@ Withdraw cryptocurrency from your MyCryptoCoin wallet to any external wallet add
 
 ## Create Withdrawal
 
-Initiate a withdrawal of cryptocurrency to an external address.
+Initiate a withdrawal of cryptocurrency to an external address. The crypto type is specified in the URL path.
 
 ```
-POST /withdrawals
+POST /wallets/{crypto}/withdraw
 ```
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `crypto` | string | Cryptocurrency symbol (BTC, ETH, USDT_ERC20, USDT_TRC20, BNB, SOL, MATIC, LTC, DOGE, XRP) |
 
 ### Request Body
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `crypto` | string | Yes | Cryptocurrency to withdraw |
-| `amount` | string | Yes | Amount to withdraw (as string for precision) |
 | `address` | string | Yes | Destination wallet address |
-| `network` | string | Conditional | Required for multi-network tokens (e.g., USDT on ethereum vs tron) |
-| `memo` | string | No | Memo/tag (required for XRP, optional for exchange deposits) |
+| `amount` | string | Yes | Amount to withdraw (as decimal string, must be > 0) |
+| `memo` | string | No | Memo/tag (max 200 chars; required for XRP, optional for exchange deposits) |
 
 ### Minimum Withdrawal Amounts
 
@@ -53,11 +57,10 @@ POST /withdrawals
 ### Example Request -- BTC Withdrawal
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/withdrawals \
+curl -X POST https://api.mycrypto.co.in/api/v1/wallets/BTC/withdraw \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
   -H "Content-Type: application/json" \
   -d '{
-    "crypto": "BTC",
     "amount": "0.05000000",
     "address": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
   }'
@@ -66,30 +69,29 @@ curl -X POST https://api.mycrypto.co.in/v1/withdrawals \
 ### Example Request -- USDT on Tron
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/withdrawals \
+curl -X POST https://api.mycrypto.co.in/api/v1/wallets/USDT_TRC20/withdraw \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
   -H "Content-Type: application/json" \
   -d '{
-    "crypto": "USDT",
     "amount": "500.000000",
-    "address": "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9",
-    "network": "tron"
+    "address": "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9"
   }'
 ```
 
 ### Example Request -- XRP with Memo
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/withdrawals \
+curl -X POST https://api.mycrypto.co.in/api/v1/wallets/XRP/withdraw \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
   -H "Content-Type: application/json" \
   -d '{
-    "crypto": "XRP",
     "amount": "100.000000",
     "address": "rN7n3473SaZBCG4dFL83w7p1W9cgZw6w3p",
     "memo": "1234567890"
   }'
 ```
+
+> **Note:** The cryptocurrency is specified in the URL path, not the request body. Use `USDT_ERC20` or `USDT_TRC20` to specify the network for USDT.
 
 ### Example Response (201 Created)
 
@@ -133,27 +135,18 @@ pending --> processing --> completed
 
 ## List Withdrawals
 
-Retrieve a paginated list of your withdrawals.
+To list withdrawals, use the unified transactions endpoint:
 
 ```
-GET /withdrawals
+GET /transactions
 ```
 
-### Query Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `status` | string | -- | Filter by status |
-| `crypto` | string | -- | Filter by cryptocurrency |
-| `date_from` | string | -- | Start date (YYYY-MM-DD) |
-| `date_to` | string | -- | End date (YYYY-MM-DD) |
-| `page` | integer | 1 | Page number |
-| `limit` | integer | 20 | Items per page (max 100) |
+Filter by transaction type to see only withdrawals. See the [Transactions](#) documentation for full query parameters.
 
 ### Example Request
 
 ```bash
-curl "https://api.mycrypto.co.in/v1/withdrawals?status=completed&crypto=BTC&limit=5" \
+curl "https://api.mycrypto.co.in/api/v1/transactions" \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
 ```
 
@@ -206,7 +199,7 @@ GET /withdrawals/{id}
 ### Example Request
 
 ```bash
-curl https://api.mycrypto.co.in/v1/withdrawals/wth_9z8y7x6w5v \
+curl https://api.mycrypto.co.in/api/v1/wallets/wth_9z8y7x6w5v \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
 ```
 
@@ -336,7 +329,7 @@ Withdrawals trigger these webhook events:
 
 | Event | When |
 |-------|------|
-| `withdrawal.processing` | Transaction submitted to blockchain |
+| `withdrawal.initiated` | Withdrawal request submitted for processing |
 | `withdrawal.completed` | Transaction confirmed on-chain |
 | `withdrawal.failed` | Transaction failed |
 

@@ -33,40 +33,43 @@ pending --> confirming --> confirmed --> settled
 Creates a new crypto payment and returns a unique deposit address.
 
 ```
-POST /payments
+POST /payments/create
 ```
 
 ### Request Body
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `amount` | number | Yes | Payment amount in fiat currency |
-| `currency` | string | Yes | ISO 4217 currency code (USD, EUR, GBP, INR, AED, SGD, AUD, CAD, JPY) |
-| `crypto` | string | Yes | Cryptocurrency to accept (BTC, ETH, USDT, etc.) |
+| `crypto` | string | Yes | Cryptocurrency symbol (BTC, ETH, USDT_ERC20, USDT_TRC20, BNB, SOL, MATIC, LTC, DOGE, XRP) |
+| `amount` | string | Yes | Payment amount as a decimal string (must be > 0) |
+| `currency` | string | No | ISO 4217 currency code (default: USD) |
 | `description` | string | No | Description shown to customer (max 500 chars) |
-| `metadata` | object | No | Up to 20 key-value pairs for your reference |
-| `callback_url` | string | No | Webhook URL for this specific payment |
-| `redirect_url` | string | No | URL to redirect customer after payment |
-| `expiry_minutes` | integer | No | Expiry window in minutes (5-1440, default: 30) |
+| `orderId` | string | No | Your internal order ID (max 100 chars) |
+| `customerEmail` | string | No | Customer email address |
+| `customerName` | string | No | Customer name (max 200 chars) |
+| `callbackUrl` | string | No | Webhook URL for this specific payment |
+| `redirectUrl` | string | No | URL to redirect customer after payment |
+| `expiryMinutes` | integer | No | Expiry window in minutes (5-1440, default: 30) |
+| `metadata` | object | No | Key-value pairs (string values) for your reference |
 
 ### Example Request
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/api/v1/payments \
+curl -X POST https://api.mycrypto.co.in/api/v1/payments/create \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 99.99,
+    "crypto": "USDT_ERC20",
+    "amount": "99.99",
     "currency": "USD",
-    "crypto": "USDT",
     "description": "Premium subscription - March 2026",
     "metadata": {
       "order_id": "ORD-12345",
       "customer_email": "buyer@example.com"
     },
-    "callback_url": "https://yoursite.com/webhooks/crypto",
-    "redirect_url": "https://yoursite.com/order/success",
-    "expiry_minutes": 30
+    "callbackUrl": "https://yoursite.com/webhooks/crypto",
+    "redirectUrl": "https://yoursite.com/order/success",
+    "expiryMinutes": 30
   }'
 ```
 
@@ -143,10 +146,11 @@ GET /payments
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `status` | string | -- | Filter by status |
-| `crypto` | string | -- | Filter by cryptocurrency |
-| `date_from` | string | -- | Start date (YYYY-MM-DD) |
-| `date_to` | string | -- | End date (YYYY-MM-DD) |
+| `status` | string | -- | Filter by status (PENDING, CONFIRMING, CONFIRMED, COMPLETED, EXPIRED, FAILED, REFUNDED) |
+| `crypto` | string | -- | Filter by crypto symbol (BTC, ETH, USDT_ERC20, etc.) |
+| `startDate` | string | -- | ISO 8601 datetime filter start |
+| `endDate` | string | -- | ISO 8601 datetime filter end |
+| `orderId` | string | -- | Filter by your internal order ID |
 | `page` | integer | 1 | Page number |
 | `limit` | integer | 20 | Items per page (max 100) |
 
@@ -246,11 +250,21 @@ POST /payments/{id}/verify
 |-----------|------|-------------|
 | `id` | string | Payment ID |
 
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `txHash` | string | Yes | On-chain transaction hash to verify |
+
 ### Example Request
 
 ```bash
 curl -X POST https://api.mycrypto.co.in/api/v1/payments/pay_1a2b3c4d5e6f/verify \
-  -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+  -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "txHash": "0xabc123def456789..."
+  }'
 ```
 
 ### Example Response (200 OK)
@@ -322,13 +336,12 @@ Different cryptocurrencies require different numbers of block confirmations:
 | ETH | 12 | ~3 minutes |
 | USDT (ERC-20) | 12 | ~3 minutes |
 | USDT (TRC-20) | 20 | ~1 minute |
-| USDC | 12 | ~3 minutes |
 | BNB | 15 | ~1 minute |
 | SOL | 32 | ~15 seconds |
-| MATIC | 128 | ~5 minutes |
+| MATIC | 30 | ~1 minute |
 | LTC | 6 | ~15 minutes |
 | XRP | 1 | ~4 seconds |
-| DOGE | 40 | ~40 minutes |
+| DOGE | 6 | ~6 minutes |
 
 ---
 

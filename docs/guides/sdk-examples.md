@@ -19,7 +19,7 @@ Copy-paste ready code examples for integrating MyCryptoCoin in JavaScript/Node.j
 
 ```javascript
 // mcc-client.js
-const API_BASE = process.env.MCC_API_BASE || 'https://api.mycrypto.co.in/v1';
+const API_BASE = process.env.MCC_API_BASE || 'https://api.mycrypto.co.in/api/v1';
 const API_KEY = process.env.MCC_API_KEY;
 
 if (!API_KEY) {
@@ -65,7 +65,7 @@ const { mccRequest } = require('./mcc-client');
 
 async function createPayment(orderId, amount, currency, crypto, customerEmail) {
   try {
-    const payment = await mccRequest('POST', '/payments', {
+    const payment = await mccRequest('POST', '/payments/create', {
       amount,
       currency,
       crypto,
@@ -74,9 +74,9 @@ async function createPayment(orderId, amount, currency, crypto, customerEmail) {
         order_id: orderId,
         customer_email: customerEmail,
       },
-      callback_url: 'https://yoursite.com/webhooks/mycryptocoin',
-      redirect_url: `https://yoursite.com/orders/${orderId}/complete`,
-      expiry_minutes: 30,
+      callbackUrl: 'https://yoursite.com/webhooks/mycryptocoin',
+      redirectUrl: `https://yoursite.com/orders/${orderId}/complete`,
+      expiryMinutes: 30,
     });
 
     console.log('Payment created:', payment.id);
@@ -108,9 +108,9 @@ createPayment('ORD-12345', 99.99, 'USD', 'USDT', 'buyer@example.com');
 ```javascript
 const { mccRequest } = require('./mcc-client');
 
-async function checkPayment(paymentId) {
+async function checkPayment(paymentId, txHash) {
   try {
-    const result = await mccRequest('POST', `/payments/${paymentId}/verify`);
+    const result = await mccRequest('POST', `/payments/${paymentId}/verify`, { txHash });
 
     if (result.verified) {
       console.log(`Payment ${paymentId} is CONFIRMED`);
@@ -148,25 +148,21 @@ const WEBHOOK_SECRET = process.env.MCC_WEBHOOK_SECRET;
 
 function verifySignature(req) {
   const signature = req.headers['x-mcc-signature'];
-  const timestamp = req.headers['x-mcc-timestamp'];
   const body = req.body.toString();
 
-  if (!signature || !timestamp || !body) {
+  if (!signature || !body) {
     return false;
   }
 
-  const currentTime = Math.floor(Date.now() / 1000);
-  if (Math.abs(currentTime - parseInt(timestamp)) > 300) {
-    return false;
-  }
-
-  const payload = timestamp + '.' + body;
-  const expected = 'sha256=' + crypto
+  const expected = crypto
     .createHmac('sha256', WEBHOOK_SECRET)
-    .update(payload)
+    .update(body)
     .digest('hex');
 
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const a = Buffer.from(signature, 'hex');
+  const b = Buffer.from(expected, 'hex');
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 
 // Track processed delivery IDs (use Redis or a database in production)
@@ -188,11 +184,11 @@ app.post('/webhooks/mycryptocoin',
     }
 
     const event = JSON.parse(req.body.toString());
-    console.log(`Webhook received: ${event.type} (${event.id})`);
+    console.log(`Webhook received: ${event.event} (${event.webhookId})`);
 
     // Step 3: Handle event types
     try {
-      switch (event.type) {
+      switch (event.event) {
         case 'payment.confirming': {
           const { id, metadata, tx_hash } = event.data;
           console.log(`Payment ${id} is confirming. TX: ${tx_hash}`);
@@ -208,9 +204,9 @@ app.post('/webhooks/mycryptocoin',
           break;
         }
 
-        case 'payment.settled': {
+        case 'payment.completed': {
           const { id, net_amount, crypto } = event.data;
-          console.log(`Payment ${id} settled: ${net_amount} ${crypto} credited`);
+          console.log(`Payment ${id} completed: ${net_amount} ${crypto} credited`);
           break;
         }
 
@@ -268,8 +264,7 @@ const { mccRequest } = require('./mcc-client');
 
 async function withdrawBTC(amount, address) {
   try {
-    const withdrawal = await mccRequest('POST', '/withdrawals', {
-      crypto: 'BTC',
+    const withdrawal = await mccRequest('POST', '/wallets/BTC/withdraw', {
       amount: amount,
       address: address,
     });
@@ -310,7 +305,7 @@ withdrawBTC('0.05000000', 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh');
 import os
 import requests
 
-API_BASE = os.environ.get('MCC_API_BASE', 'https://api.mycrypto.co.in/v1')
+API_BASE = os.environ.get('MCC_API_BASE', 'https://api.mycrypto.co.in/api/v1')
 API_KEY = os.environ.get('MCC_API_KEY')
 
 if not API_KEY:
@@ -357,13 +352,13 @@ class MCCClient:
     def create_payment(self, amount, currency, crypto, **kwargs):
         body = {'amount': amount, 'currency': currency, 'crypto': crypto}
         body.update(kwargs)
-        return self._request('POST', '/payments', json=body)
+        return self._request('POST', '/payments/create', json=body)
 
     def get_payment(self, payment_id):
         return self._request('GET', f'/payments/{payment_id}')
 
-    def verify_payment(self, payment_id):
-        return self._request('POST', f'/payments/{payment_id}/verify')
+    def verify_payment(self, payment_id, tx_hash):
+        return self._request('POST', f'/payments/{payment_id}/verify', json={'txHash': tx_hash})
 
     def list_payments(self, **filters):
         return self._request('GET', '/payments', params=filters)
@@ -374,16 +369,22 @@ class MCCClient:
     def get_wallet(self, crypto):
         return self._request('GET', f'/wallets/{crypto}')
 
-    def create_withdrawal(self, crypto, amount, address, **kwargs):
-        body = {'crypto': crypto, 'amount': amount, 'address': address}
-        body.update(kwargs)
-        return self._request('POST', '/withdrawals', json=body)
+    def create_withdrawal(self, crypto, amount, address, memo=None):
+        body = {'amount': amount, 'address': address}
+        if memo:
+            body['memo'] = memo
+        return self._request('POST', f'/wallets/{crypto}/withdraw', json=body)
 
-    def list_withdrawals(self, **filters):
-        return self._request('GET', '/withdrawals', params=filters)
+    def get_wallet(self, crypto):
+        return self._request('GET', f'/wallets/{crypto}')
 
-    def get_withdrawal(self, withdrawal_id):
-        return self._request('GET', f'/withdrawals/{withdrawal_id}')
+    def configure_auto_withdraw(self, crypto, enabled, address=None, threshold=None):
+        body = {'enabled': enabled}
+        if address:
+            body['address'] = address
+        if threshold:
+            body['threshold'] = threshold
+        return self._request('PUT', f'/wallets/{crypto}/auto-withdraw', json=body)
 ```
 
 ### Create a Payment
@@ -395,17 +396,17 @@ mcc = MCCClient()
 
 try:
     payment = mcc.create_payment(
-        amount=99.99,
+        amount='99.99',
         currency='USD',
-        crypto='USDT',
+        crypto='USDT_ERC20',
         description='Order #ORD-12345',
         metadata={
             'order_id': 'ORD-12345',
             'customer_email': 'buyer@example.com',
         },
-        callback_url='https://yoursite.com/webhooks/mycryptocoin',
-        redirect_url='https://yoursite.com/orders/ORD-12345/complete',
-        expiry_minutes=30,
+        callbackUrl='https://yoursite.com/webhooks/mycryptocoin',
+        redirectUrl='https://yoursite.com/orders/ORD-12345/complete',
+        expiryMinutes=30,
     )
 
     print(f"Payment created: {payment['id']}")
@@ -431,7 +432,7 @@ from mcc_client import MCCClient, MCCError
 mcc = MCCClient()
 
 try:
-    result = mcc.verify_payment('pay_1a2b3c4d5e6f')
+    result = mcc.verify_payment('pay_1a2b3c4d5e6f', '0xabc123def456789...')
 
     if result['verified']:
         print(f"Payment CONFIRMED")
@@ -468,21 +469,14 @@ processed_deliveries = set()
 
 def verify_signature(req):
     signature = req.headers.get('X-MCC-Signature', '')
-    timestamp = req.headers.get('X-MCC-Timestamp', '')
     body = req.get_data(as_text=True)
 
-    if not signature or not timestamp or not body:
+    if not signature or not body:
         return False
 
-    # Reject requests older than 5 minutes
-    current_time = int(time.time())
-    if abs(current_time - int(timestamp)) > 300:
-        return False
-
-    payload = f"{timestamp}.{body}"
-    expected = 'sha256=' + hmac.new(
+    expected = hmac.new(
         WEBHOOK_SECRET.encode('utf-8'),
-        payload.encode('utf-8'),
+        body.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
 
@@ -495,17 +489,18 @@ def handle_webhook():
     if not verify_signature(request):
         return jsonify({'error': 'Invalid signature'}), 401
 
-    # Step 2: Deduplicate
-    delivery_id = request.headers.get('X-MCC-Delivery-Id')
-    if delivery_id in processed_deliveries:
+    # Step 2: Deduplicate using webhookId from payload
+    event = json.loads(request.get_data(as_text=True))
+    webhook_id = event.get('webhookId', '')
+    event_key = f"{webhook_id}:{event.get('timestamp', '')}"
+    if event_key in processed_deliveries:
         return jsonify({'received': True}), 200
 
     # Step 3: Process event
-    event = json.loads(request.get_data(as_text=True))
-    event_type = event['type']
+    event_type = event['event']
     data = event['data']
 
-    print(f"Webhook received: {event_type} ({event['id']})")
+    print(f"Webhook received: {event_type} ({webhook_id})")
 
     if event_type == 'payment.confirmed':
         order_id = data['metadata'].get('order_id')
@@ -529,7 +524,7 @@ def handle_webhook():
     elif event_type == 'withdrawal.failed':
         print(f"Withdrawal {data['id']} failed: {data['amount']} {data['crypto']}")
 
-    processed_deliveries.add(delivery_id)
+    processed_deliveries.add(event_key)
     return jsonify({'received': True}), 200
 
 
@@ -546,9 +541,9 @@ mcc = MCCClient()
 
 try:
     withdrawal = mcc.create_withdrawal(
-        crypto='BTC',
-        amount='0.05000000',
-        address='bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+        'BTC',
+        '0.05000000',
+        'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
     )
 
     print(f"Withdrawal initiated: {withdrawal['id']}")
@@ -599,7 +594,7 @@ class MccClient {
 
     public function __construct($apiKey = null, $baseUrl = null) {
         $this->apiKey = $apiKey ?: getenv('MCC_API_KEY');
-        $this->baseUrl = $baseUrl ?: (getenv('MCC_API_BASE') ?: 'https://api.mycrypto.co.in/v1');
+        $this->baseUrl = $baseUrl ?: (getenv('MCC_API_BASE') ?: 'https://api.mycrypto.co.in/api/v1');
 
         if (!$this->apiKey) {
             throw new RuntimeException('MCC_API_KEY environment variable is not set');
@@ -670,15 +665,15 @@ class MccClient {
             'currency' => $currency,
             'crypto' => $crypto,
         ], $options);
-        return $this->request('POST', '/payments', $body);
+        return $this->request('POST', '/payments/create', $body);
     }
 
     public function getPayment($paymentId) {
         return $this->request('GET', "/payments/$paymentId");
     }
 
-    public function verifyPayment($paymentId) {
-        return $this->request('POST', "/payments/$paymentId/verify");
+    public function verifyPayment($paymentId, $txHash) {
+        return $this->request('POST', "/payments/$paymentId/verify", ['txHash' => $txHash]);
     }
 
     public function listPayments($filters = []) {
@@ -691,15 +686,10 @@ class MccClient {
 
     public function createWithdrawal($crypto, $amount, $address, $options = []) {
         $body = array_merge([
-            'crypto' => $crypto,
             'amount' => $amount,
             'address' => $address,
         ], $options);
-        return $this->request('POST', '/withdrawals', $body);
-    }
-
-    public function listWithdrawals($filters = []) {
-        return $this->request('GET', '/withdrawals', null, $filters);
+        return $this->request('POST', "/wallets/$crypto/withdraw", $body);
     }
 }
 ```
@@ -713,15 +703,15 @@ require_once 'MccClient.php';
 $mcc = new MccClient();
 
 try {
-    $payment = $mcc->createPayment(99.99, 'USD', 'USDT', [
+    $payment = $mcc->createPayment('99.99', 'USD', 'USDT_ERC20', [
         'description' => 'Order #ORD-12345',
         'metadata' => [
             'order_id' => 'ORD-12345',
             'customer_email' => 'buyer@example.com',
         ],
-        'callback_url' => 'https://yoursite.com/webhooks/mycryptocoin',
-        'redirect_url' => 'https://yoursite.com/orders/ORD-12345/complete',
-        'expiry_minutes' => 30,
+        'callbackUrl' => 'https://yoursite.com/webhooks/mycryptocoin',
+        'redirectUrl' => 'https://yoursite.com/orders/ORD-12345/complete',
+        'expiryMinutes' => 30,
     ]);
 
     echo "Payment created: " . $payment['id'] . "\n";
@@ -759,25 +749,15 @@ foreach ($headers as $key => $value) {
 }
 
 $signature = $normalizedHeaders['x-mcc-signature'] ?? '';
-$timestamp = $normalizedHeaders['x-mcc-timestamp'] ?? '';
-$deliveryId = $normalizedHeaders['x-mcc-delivery-id'] ?? '';
 
 // Step 1: Verify signature
-if (empty($signature) || empty($timestamp) || empty($body)) {
+if (empty($signature) || empty($body)) {
     http_response_code(401);
-    echo json_encode(['error' => 'Missing signature headers']);
+    echo json_encode(['error' => 'Missing signature']);
     exit;
 }
 
-// Reject old requests
-if (abs(time() - intval($timestamp)) > 300) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Request too old']);
-    exit;
-}
-
-$payload = $timestamp . '.' . $body;
-$expectedSignature = 'sha256=' . hash_hmac('sha256', $payload, $webhookSecret);
+$expectedSignature = hash_hmac('sha256', $body, $webhookSecret);
 
 if (!hash_equals($expectedSignature, $signature)) {
     http_response_code(401);
@@ -787,10 +767,10 @@ if (!hash_equals($expectedSignature, $signature)) {
 
 // Step 2: Parse event
 $event = json_decode($body, true);
-$eventType = $event['type'];
+$eventType = $event['event'];
 $data = $event['data'];
 
-error_log("Webhook received: $eventType ({$event['id']})");
+error_log("Webhook received: $eventType ({$event['webhookId']})");
 
 // Step 3: Handle events
 switch ($eventType) {
@@ -880,46 +860,46 @@ try {
 **Register:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/register \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210",
     "email": "you@example.com",
-    "password": "SecurePass123",
-    "business_name": "My Business",
-    "business_type": "private_limited"
+    "password": "SecurePass123!",
+    "businessName": "My Business",
+    "phone": "+919876543210"
   }'
 ```
 
-**Verify OTP:**
+**Verify WhatsApp OTP:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/verify-otp \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/verify-whatsapp-otp \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210",
-    "otp": "482916"
+    "phone": "+919876543210",
+    "otp": "482916",
+    "purpose": "registration"
   }'
 ```
 
 **Login:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/login \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210",
-    "password": "SecurePass123"
+    "email": "you@example.com",
+    "password": "SecurePass123!"
   }'
 ```
 
 **Refresh Token:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/refresh \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/refresh-token \
   -H "Content-Type: application/json" \
   -d '{
-    "refresh_token": "mcc_rt_x7k9m2p4q8..."
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }'
 ```
 
@@ -928,42 +908,42 @@ curl -X POST https://api.mycrypto.co.in/v1/auth/refresh \
 **Create Payment:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/payments \
+curl -X POST https://api.mycrypto.co.in/api/v1/payments/create \
   -H "X-API-Key: mcc_live_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 99.99,
+    "crypto": "USDT_ERC20",
+    "amount": "99.99",
     "currency": "USD",
-    "crypto": "USDT",
     "description": "Order #ORD-12345",
     "metadata": {
       "order_id": "ORD-12345",
       "customer_email": "buyer@example.com"
     },
-    "callback_url": "https://yoursite.com/webhooks/crypto",
-    "redirect_url": "https://yoursite.com/success",
-    "expiry_minutes": 30
+    "callbackUrl": "https://yoursite.com/webhooks/crypto",
+    "redirectUrl": "https://yoursite.com/success",
+    "expiryMinutes": 30
   }'
 ```
 
 **List Payments:**
 
 ```bash
-curl "https://api.mycrypto.co.in/v1/payments?status=confirmed&crypto=USDT&page=1&limit=10" \
+curl "https://api.mycrypto.co.in/api/v1/payments?status=confirmed&crypto=USDT&page=1&limit=10" \
   -H "X-API-Key: mcc_live_YOUR_KEY"
 ```
 
 **Get Payment:**
 
 ```bash
-curl https://api.mycrypto.co.in/v1/payments/pay_1a2b3c4d5e6f \
+curl https://api.mycrypto.co.in/api/v1/payments/pay_1a2b3c4d5e6f \
   -H "X-API-Key: mcc_live_YOUR_KEY"
 ```
 
 **Verify Payment:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/payments/pay_1a2b3c4d5e6f/verify \
+curl -X POST https://api.mycrypto.co.in/api/v1/payments/pay_1a2b3c4d5e6f/verify \
   -H "X-API-Key: mcc_live_YOUR_KEY"
 ```
 
@@ -972,21 +952,21 @@ curl -X POST https://api.mycrypto.co.in/v1/payments/pay_1a2b3c4d5e6f/verify \
 **List All Wallets:**
 
 ```bash
-curl https://api.mycrypto.co.in/v1/wallets \
+curl https://api.mycrypto.co.in/api/v1/wallets \
   -H "X-API-Key: mcc_live_YOUR_KEY"
 ```
 
 **Get Specific Wallet:**
 
 ```bash
-curl https://api.mycrypto.co.in/v1/wallets/BTC \
+curl https://api.mycrypto.co.in/api/v1/wallets/BTC \
   -H "X-API-Key: mcc_live_YOUR_KEY"
 ```
 
 **Configure Auto-Withdrawal:**
 
 ```bash
-curl -X PUT https://api.mycrypto.co.in/v1/wallets/BTC/auto-withdraw \
+curl -X PUT https://api.mycrypto.co.in/api/v1/wallets/BTC/auto-withdraw \
   -H "X-API-Key: mcc_live_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -998,45 +978,28 @@ curl -X PUT https://api.mycrypto.co.in/v1/wallets/BTC/auto-withdraw \
 
 ### Withdrawals
 
-**Create Withdrawal:**
+**Create BTC Withdrawal:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/withdrawals \
+curl -X POST https://api.mycrypto.co.in/api/v1/wallets/BTC/withdraw \
   -H "X-API-Key: mcc_live_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "crypto": "BTC",
     "amount": "0.05000000",
     "address": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
   }'
 ```
 
-**Create USDT Withdrawal (specify network):**
+**Create USDT (TRC-20) Withdrawal:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/withdrawals \
+curl -X POST https://api.mycrypto.co.in/api/v1/wallets/USDT_TRC20/withdraw \
   -H "X-API-Key: mcc_live_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "crypto": "USDT",
     "amount": "500.000000",
-    "address": "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9",
-    "network": "tron"
+    "address": "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9"
   }'
-```
-
-**List Withdrawals:**
-
-```bash
-curl "https://api.mycrypto.co.in/v1/withdrawals?status=completed&limit=5" \
-  -H "X-API-Key: mcc_live_YOUR_KEY"
-```
-
-**Get Withdrawal:**
-
-```bash
-curl https://api.mycrypto.co.in/v1/withdrawals/wth_9z8y7x6w5v \
-  -H "X-API-Key: mcc_live_YOUR_KEY"
 ```
 
 ### Transactions
@@ -1044,7 +1007,7 @@ curl https://api.mycrypto.co.in/v1/withdrawals/wth_9z8y7x6w5v \
 **List Transactions:**
 
 ```bash
-curl "https://api.mycrypto.co.in/v1/transactions?type=payment_received&crypto=USDT&date_from=2026-03-01&date_to=2026-03-19&page=1&limit=20" \
+curl "https://api.mycrypto.co.in/api/v1/transactions?type=payment_received&crypto=USDT&date_from=2026-03-01&date_to=2026-03-19&page=1&limit=20" \
   -H "X-API-Key: mcc_live_YOUR_KEY"
 ```
 
@@ -1053,47 +1016,39 @@ curl "https://api.mycrypto.co.in/v1/transactions?type=payment_received&crypto=US
 **Register Webhook:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/webhooks \
-  -H "X-API-Key: mcc_live_YOUR_KEY" \
+curl -X POST https://api.mycrypto.co.in/api/v1/webhooks \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://yoursite.com/webhooks/mycryptocoin",
     "events": ["payment.confirmed", "payment.failed", "withdrawal.completed"],
-    "description": "Production webhook"
+    "isActive": true
   }'
 ```
 
 **List Webhooks:**
 
 ```bash
-curl https://api.mycrypto.co.in/v1/webhooks \
-  -H "X-API-Key: mcc_live_YOUR_KEY"
+curl https://api.mycrypto.co.in/api/v1/webhooks \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Update Webhook:**
 
 ```bash
-curl -X PUT https://api.mycrypto.co.in/v1/webhooks/whk_m1n2o3p4q5 \
-  -H "X-API-Key: mcc_live_YOUR_KEY" \
+curl -X PUT https://api.mycrypto.co.in/api/v1/webhooks/whk_m1n2o3p4q5 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "events": ["*"],
-    "description": "All events"
+    "events": ["payment.created", "payment.confirming", "payment.confirmed", "payment.completed", "payment.expired", "payment.failed", "withdrawal.initiated", "withdrawal.completed", "withdrawal.failed"]
   }'
 ```
 
 **Delete Webhook:**
 
 ```bash
-curl -X DELETE https://api.mycrypto.co.in/v1/webhooks/whk_m1n2o3p4q5 \
-  -H "X-API-Key: mcc_live_YOUR_KEY"
-```
-
-**Test Webhook:**
-
-```bash
-curl -X POST https://api.mycrypto.co.in/v1/webhooks/whk_m1n2o3p4q5/test \
-  -H "X-API-Key: mcc_live_YOUR_KEY"
+curl -X DELETE https://api.mycrypto.co.in/api/v1/webhooks/whk_m1n2o3p4q5 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Merchant
@@ -1101,47 +1056,48 @@ curl -X POST https://api.mycrypto.co.in/v1/webhooks/whk_m1n2o3p4q5/test \
 **Get Profile:**
 
 ```bash
-curl https://api.mycrypto.co.in/v1/merchant/profile \
-  -H "X-API-Key: mcc_live_YOUR_KEY"
+curl https://api.mycrypto.co.in/api/v1/merchant/profile \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Update Profile:**
 
 ```bash
-curl -X PUT https://api.mycrypto.co.in/v1/merchant/profile \
-  -H "X-API-Key: mcc_live_YOUR_KEY" \
+curl -X PUT https://api.mycrypto.co.in/api/v1/merchant/profile \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "business_name": "Acme Digital Services Pvt Ltd",
-    "website": "https://acmedigital.com",
-    "supported_cryptos": ["BTC", "ETH", "USDT", "USDC", "SOL"]
+    "businessName": "Acme Digital Services Pvt Ltd",
+    "website": "https://acmedigital.com"
   }'
 ```
 
 **Generate API Key:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/merchant/api-keys \
+curl -X POST https://api.mycrypto.co.in/api/v1/merchant/api-keys \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Production Server",
     "mode": "live",
-    "permissions": ["payments:read", "payments:write", "wallets:read"]
+    "permissions": ["payments:read", "payments:write", "wallets:read", "webhooks:manage"]
   }'
 ```
+
+> **Note:** Available permissions: `payments:read`, `payments:write`, `wallets:read`, `wallets:write`, `transactions:read`, `webhooks:manage`.
 
 **List API Keys:**
 
 ```bash
-curl https://api.mycrypto.co.in/v1/merchant/api-keys \
+curl https://api.mycrypto.co.in/api/v1/merchant/api-keys \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Revoke API Key:**
 
 ```bash
-curl -X DELETE https://api.mycrypto.co.in/v1/merchant/api-keys/key_p1q2r3s4t5 \
+curl -X DELETE https://api.mycrypto.co.in/api/v1/merchant/api-keys/key_p1q2r3s4t5 \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -1150,21 +1106,20 @@ curl -X DELETE https://api.mycrypto.co.in/v1/merchant/api-keys/key_p1q2r3s4t5 \
 **Forgot Password:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/forgot-password \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/forgot-password \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210"
+    "email": "you@example.com"
   }'
 ```
 
 **Reset Password:**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/reset-password \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/reset-password \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210",
-    "otp": "482916",
-    "new_password": "NewSecurePass456"
+    "token": "reset_token_from_email",
+    "password": "NewSecurePass456!"
   }'
 ```

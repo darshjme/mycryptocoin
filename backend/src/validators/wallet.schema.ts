@@ -1,11 +1,15 @@
 import { z } from 'zod';
-import { CryptoSymbol } from '../config/crypto';
+import { CryptoNetwork, TokenSymbol } from '@mycryptocoin/shared';
 
-const cryptoSymbols = Object.values(CryptoSymbol) as [string, ...string[]];
+const networkValues = Object.values(CryptoNetwork) as [string, ...string[]];
+const tokenValues = Object.values(TokenSymbol) as [string, ...string[]];
 
-export const walletCryptoParamSchema = z.object({
-  crypto: z.enum(cryptoSymbols, {
-    errorMap: () => ({ message: 'Unsupported cryptocurrency' }),
+export const walletParamSchema = z.object({
+  network: z.enum(networkValues, {
+    errorMap: () => ({ message: 'Unsupported network' }),
+  }),
+  token: z.enum(tokenValues, {
+    errorMap: () => ({ message: 'Unsupported token' }),
   }),
 });
 
@@ -27,7 +31,6 @@ export const withdrawSchema = z.object({
     .string()
     .regex(/^\d+(\.\d+)?$/, 'Amount must be a valid decimal number')
     .refine((val) => parseFloat(val) > 0, 'Amount must be greater than 0'),
-  memo: z.string().max(200).optional(), // For XRP destination tag, etc.
 });
 
 export const listWalletsQuerySchema = z.object({
@@ -35,6 +38,6 @@ export const listWalletsQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20).optional(),
 });
 
-export type WalletCryptoParam = z.infer<typeof walletCryptoParamSchema>;
+export type WalletParam = z.infer<typeof walletParamSchema>;
 export type AutoWithdrawInput = z.infer<typeof autoWithdrawSchema>;
 export type WithdrawInput = z.infer<typeof withdrawSchema>;

@@ -15,7 +15,7 @@ GET /wallets
 ### Example Request
 
 ```bash
-curl https://api.mycrypto.co.in/v1/wallets \
+curl https://api.mycrypto.co.in/api/v1/wallets \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
 ```
 
@@ -92,7 +92,7 @@ GET /wallets/{crypto}
 ### Example Request
 
 ```bash
-curl https://api.mycrypto.co.in/v1/wallets/BTC \
+curl https://api.mycrypto.co.in/api/v1/wallets/BTC \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
 ```
 
@@ -143,7 +143,7 @@ PUT /wallets/{crypto}/auto-withdraw
 ### Enable Auto-Withdrawal
 
 ```bash
-curl -X PUT https://api.mycrypto.co.in/v1/wallets/BTC/auto-withdraw \
+curl -X PUT https://api.mycrypto.co.in/api/v1/wallets/BTC/auto-withdraw \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
   -H "Content-Type: application/json" \
   -d '{
@@ -170,7 +170,7 @@ curl -X PUT https://api.mycrypto.co.in/v1/wallets/BTC/auto-withdraw \
 ### Disable Auto-Withdrawal
 
 ```bash
-curl -X PUT https://api.mycrypto.co.in/v1/wallets/ETH/auto-withdraw \
+curl -X PUT https://api.mycrypto.co.in/api/v1/wallets/ETH/auto-withdraw \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
   -H "Content-Type: application/json" \
   -d '{

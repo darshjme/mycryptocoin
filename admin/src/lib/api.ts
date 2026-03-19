@@ -158,73 +158,106 @@ class AdminApiClient {
   }
 }
 
+import type {
+  UserRole,
+  PaymentStatus,
+  TransactionStatus,
+  WithdrawalStatus,
+  CryptoNetwork,
+  TokenSymbol,
+} from '@mycryptocoin/shared';
+
+/**
+ * Admin-facing user. Uses the shared UserRole enum.
+ */
 export interface AdminUser {
   id: string;
   email: string;
   name: string;
-  role: 'super_admin' | 'admin' | 'viewer';
+  role: UserRole;
   avatar?: string;
-  lastLogin: string;
+  lastLoginAt: string;
 }
 
+/**
+ * Admin-facing Merchant view. Aligned with shared Merchant interface
+ * plus aggregated read-only stats.
+ */
 export interface Merchant {
   id: string;
-  name: string;
+  userId: string;
+  businessName: string;
+  businessUrl?: string;
   email: string;
-  whatsapp: string;
-  status: 'active' | 'suspended' | 'pending';
+  isActive: boolean;
   totalVolume: number;
   totalTransactions: number;
-  joinedAt: string;
-  lastActive: string;
-  businessType: string;
+  createdAt: string;
+  updatedAt: string;
   apiKeyCount: number;
 }
 
+/**
+ * Admin-facing Transaction view. Status values match shared TransactionStatus enum.
+ */
 export interface Transaction {
   id: string;
+  paymentId?: string;
+  withdrawalId?: string;
+  walletId: string;
   merchantId: string;
   merchantName: string;
-  type: 'payment' | 'withdrawal' | 'deposit';
-  crypto: string;
-  amount: number;
-  amountUsd: number;
-  status: 'pending' | 'confirmed' | 'completed' | 'failed' | 'expired';
+  network: CryptoNetwork;
+  token: TokenSymbol;
+  amount: string;
   txHash?: string;
+  status: TransactionStatus;
+  confirmations: number;
+  requiredConfirmations: number;
   createdAt: string;
   confirmedAt?: string;
 }
 
+/**
+ * Admin-facing Payment view. Status values match shared PaymentStatus enum.
+ */
 export interface Payment {
   id: string;
   merchantId: string;
   merchantName: string;
-  orderId: string;
-  crypto: string;
-  amount: number;
-  amountUsd: number;
-  status: 'awaiting_payment' | 'confirming' | 'confirmed' | 'completed' | 'expired' | 'failed';
-  walletAddress: string;
-  confirmations: number;
-  requiredConfirmations: number;
+  externalId?: string;
+  network: CryptoNetwork;
+  token: TokenSymbol;
+  requestedAmount: string;
+  requestedCurrency: string;
+  cryptoAmount: string;
+  receivedAmount: string;
+  status: PaymentStatus;
+  depositAddress: string;
   createdAt: string;
   expiresAt: string;
+  paidAt?: string;
 }
 
+/**
+ * Admin-facing Withdrawal view. Status values match shared WithdrawalStatus enum.
+ */
 export interface Withdrawal {
   id: string;
   merchantId: string;
   merchantName: string;
-  crypto: string;
-  amount: number;
-  amountUsd: number;
-  fee: number;
-  destinationAddress: string;
-  status: 'pending_approval' | 'approved' | 'processing' | 'completed' | 'failed' | 'rejected';
+  network: CryptoNetwork;
+  token: TokenSymbol;
+  amount: string;
+  fee: string;
+  netAmount: string;
+  toAddress: string;
+  status: WithdrawalStatus;
   txHash?: string;
-  requestedAt: string;
+  reviewedBy?: string;
+  reviewNote?: string;
   processedAt?: string;
-  adminNote?: string;
+  createdAt: string;
 }
 
 export interface WhatsAppStatus {
@@ -243,37 +276,43 @@ export interface SystemHealth {
     eth: { status: 'healthy' | 'degraded' | 'down'; blockHeight: number; lastSync: string };
     usdt: { status: 'healthy' | 'degraded' | 'down'; lastSync: string };
     sol: { status: 'healthy' | 'degraded' | 'down'; blockHeight: number; lastSync: string };
+    trx: { status: 'healthy' | 'degraded' | 'down'; blockHeight: number; lastSync: string };
+    ltc: { status: 'healthy' | 'degraded' | 'down'; blockHeight: number; lastSync: string };
+    bnb: { status: 'healthy' | 'degraded' | 'down'; blockHeight: number; lastSync: string };
   };
   whatsapp: { status: 'connected' | 'disconnected' | 'connecting' };
   database: { status: 'healthy' | 'degraded' | 'down'; connections: number };
   redis: { status: 'healthy' | 'degraded' | 'down'; memoryUsage: string };
 }
 
-export interface DashboardStats {
+export interface AdminDashboardStats {
   totalMerchants: number;
   activeMerchants: number;
   pendingMerchants: number;
-  volume24h: number;
-  volume7d: number;
-  volume30d: number;
-  feesEarned24h: number;
-  feesEarned7d: number;
-  feesEarned30d: number;
+  volume24h: string;
+  volume7d: string;
+  volume30d: string;
+  feesEarned24h: string;
+  feesEarned7d: string;
+  feesEarned30d: string;
   activePayments: number;
   pendingWithdrawals: number;
   totalTransactions: number;
 }
 
+/** @deprecated Use AdminDashboardStats instead */
+export type DashboardStats = AdminDashboardStats;
+
 export interface RevenueSummary {
-  totalRevenue: number;
-  revenueByCrypto: Array<{ crypto: string; amount: number; percentage: number }>;
-  revenueByPeriod: Array<{ date: string; amount: number }>;
-  topMerchants: Array<{ id: string; name: string; volume: number; fees: number }>;
+  totalRevenue: string;
+  revenueByCrypto: Array<{ network: CryptoNetwork; token: TokenSymbol; amount: string; percentage: number }>;
+  revenueByPeriod: Array<{ date: string; amount: string }>;
+  topMerchants: Array<{ id: string; name: string; volume: string; fees: string }>;
 }
 
 export interface SystemSettings {
-  feePercentage: number;
-  minWithdrawals: Record<string, number>;
+  feeRate: number;
+  minWithdrawals: Record<string, string>;
   maintenanceMode: boolean;
   notifications: {
     emailEnabled: boolean;

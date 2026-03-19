@@ -3,37 +3,27 @@ import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useQueryClient } from '@tanstack/react-query';
+import type {
+  PaymentStatus,
+  WithdrawalStatus,
+  WsPaymentUpdate,
+  WsBalanceUpdate,
+  TokenSymbol,
+} from '@mycryptocoin/shared';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://ws.mycrypto.co.in';
 
-interface PaymentUpdateData {
-  paymentId: string;
-  status: string;
-  amount?: number;
-  crypto?: string;
-  receivedAmount?: string;
-  txHash?: string;
-  confirmations?: number;
-}
-
-interface BalanceUpdateData {
-  walletId: string;
-  crypto: string;
-  balance: string;
-  pendingBalance: string;
-}
-
 interface WithdrawalUpdateData {
   withdrawalId: string;
-  status: string;
-  amount: number;
-  crypto: string;
+  status: WithdrawalStatus;
+  amount: string;
+  token: TokenSymbol;
   txHash?: string;
 }
 
 interface UseWebSocketOptions {
-  onPaymentUpdate?: (data: PaymentUpdateData) => void;
-  onBalanceUpdate?: (data: BalanceUpdateData) => void;
+  onPaymentUpdate?: (data: WsPaymentUpdate) => void;
+  onBalanceUpdate?: (data: WsBalanceUpdate) => void;
   onWithdrawalUpdate?: (data: WithdrawalUpdateData) => void;
 }
 
@@ -78,16 +68,16 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       setIsConnected(false);
     });
 
-    // Payment events
-    socket.on('payment:update', (data: PaymentUpdateData) => {
+    // Payment events — status values match shared PaymentStatus enum
+    socket.on('payment:update', (data: WsPaymentUpdate) => {
       optionsRef.current.onPaymentUpdate?.(data);
 
-      if (data.status === 'confirmed') {
+      if (data.status === 'PAID' as PaymentStatus) {
         addNotification({
           id: `notif-payment-${Date.now()}`,
           type: 'payment',
           title: 'Payment Confirmed',
-          message: `${data.amount || data.receivedAmount} ${data.crypto} payment confirmed`,
+          message: `${data.receivedAmount} payment confirmed`,
           isRead: false,
           createdAt: new Date().toISOString(),
           link: `/payments?id=${data.paymentId}`,
@@ -95,23 +85,23 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         addToast({
           type: 'success',
           title: 'Payment Confirmed',
-          message: `${data.amount || data.receivedAmount} ${data.crypto} received`,
+          message: `${data.receivedAmount} received`,
         });
-      } else if (data.status === 'pending') {
+      } else if (data.status === 'AWAITING_PAYMENT' as PaymentStatus) {
         addNotification({
           id: `notif-payment-${Date.now()}`,
           type: 'payment',
           title: 'New Payment Detected',
-          message: `${data.amount || data.receivedAmount} ${data.crypto} payment pending (${data.confirmations || 0} confirmations)`,
+          message: `Payment pending (${data.confirmations || 0} confirmations)`,
           isRead: false,
           createdAt: new Date().toISOString(),
           link: `/payments?id=${data.paymentId}`,
         });
-      } else if (data.status === 'failed') {
+      } else if (data.status === 'EXPIRED' as PaymentStatus) {
         addToast({
           type: 'error',
-          title: 'Payment Failed',
-          message: `Payment ${data.paymentId} has failed`,
+          title: 'Payment Expired',
+          message: `Payment ${data.paymentId} has expired`,
         });
       }
 
@@ -120,21 +110,21 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     });
 
     // Balance events
-    socket.on('balance:update', (data: BalanceUpdateData) => {
+    socket.on('balance:update', (data: WsBalanceUpdate) => {
       optionsRef.current.onBalanceUpdate?.(data);
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
     });
 
-    // Withdrawal events
+    // Withdrawal events — status values match shared WithdrawalStatus enum
     socket.on('withdrawal:update', (data: WithdrawalUpdateData) => {
       optionsRef.current.onWithdrawalUpdate?.(data);
 
-      if (data.status === 'completed') {
+      if (data.status === 'COMPLETED') {
         addNotification({
           id: `notif-withdrawal-${Date.now()}`,
           type: 'withdrawal',
           title: 'Withdrawal Complete',
-          message: `${data.amount} ${data.crypto} sent successfully`,
+          message: `${data.amount} ${data.token} sent successfully`,
           isRead: false,
           createdAt: new Date().toISOString(),
           link: `/withdrawals`,
@@ -142,13 +132,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         addToast({
           type: 'success',
           title: 'Withdrawal Complete',
-          message: `${data.amount} ${data.crypto} sent successfully`,
+          message: `${data.amount} ${data.token} sent successfully`,
         });
-      } else if (data.status === 'failed') {
+      } else if (data.status === 'FAILED') {
         addToast({
           type: 'error',
           title: 'Withdrawal Failed',
-          message: `Withdrawal of ${data.amount} ${data.crypto} failed`,
+          message: `Withdrawal of ${data.amount} ${data.token} failed`,
         });
       }
 
