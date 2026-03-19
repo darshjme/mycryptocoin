@@ -24,6 +24,7 @@ declare global {
         id: string;
         merchantId: string;
         mode: string;
+        permissions: string[];
       };
     }
   }
@@ -173,6 +174,38 @@ export function requireAdmin(req: Request, _res: Response, next: NextFunction): 
     return;
   }
   next();
+}
+
+/**
+ * SECURITY: API key permission enforcement middleware.
+ * If the request was authenticated via an API key, verify the key has
+ * the required permission scope. JWT-authenticated users bypass this
+ * (they have full access to their own account).
+ *
+ * Usage: router.post('/create', authenticateAny, requirePermission('payments:write'), handler);
+ */
+export function requirePermission(...requiredPermissions: string[]) {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    // JWT-based auth has full access
+    if (!req.apiKey) {
+      next();
+      return;
+    }
+
+    const keyPermissions = req.apiKey.permissions || [];
+    const hasAll = requiredPermissions.every((p) => keyPermissions.includes(p));
+
+    if (!hasAll) {
+      next(
+        new ForbiddenError(
+          `API key lacks required permission(s): ${requiredPermissions.join(', ')}`,
+        ),
+      );
+      return;
+    }
+
+    next();
+  };
 }
 
 /**

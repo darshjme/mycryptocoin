@@ -84,7 +84,7 @@ list_backups() {
   echo ""
 
   if [ -d "$BACKUP_DIR" ]; then
-    ls -lhS "${BACKUP_DIR}"/mycryptocoin-*.sql.gz 2>/dev/null | while IFS= read -r line; do
+    ls -lhS "${BACKUP_DIR}"/mycryptocoin-*.dump 2>/dev/null | while IFS= read -r line; do
       echo "  $line"
     done
   else
@@ -300,7 +300,7 @@ restore_pitr() {
   target_epoch=$(date -d "$target_time" +%s 2>/dev/null || date -j -f "%Y-%m-%d %H:%M:%S" "$target_time" +%s 2>/dev/null)
 
   local best_backup=""
-  for f in $(ls -t "${BACKUP_DIR}"/mycryptocoin-*.sql.gz 2>/dev/null); do
+  for f in $(ls -t "${BACKUP_DIR}"/mycryptocoin-*.dump 2>/dev/null); do
     local file_ts
     file_ts=$(echo "$f" | grep -oP '\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}' | sed 's/-/:/4;s/-/:/4')
     local file_epoch

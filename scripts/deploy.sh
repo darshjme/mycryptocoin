@@ -171,16 +171,21 @@ rollback() {
   cd "$APP_DIR"
 
   if [ -f "${APP_DIR}/.last-deployed-image" ]; then
-    log "Rolling back to previous version..."
+    local prev_image
+    prev_image=$(cat "${APP_DIR}/.last-deployed-image")
+    log "Rolling back to previous image: ${prev_image}"
+
+    # Tag the previous image so compose picks it up
+    export APP_VERSION="${prev_image##*:}"
+
+    # Stop current containers and start with previous image
+    docker compose -f "$COMPOSE_FILE" stop backend
+    docker compose -f "$COMPOSE_FILE" up -d backend
   else
-    log "WARNING: No previous version recorded"
+    log "WARNING: No previous version recorded — restarting current containers"
+    docker compose -f "$COMPOSE_FILE" stop backend
+    docker compose -f "$COMPOSE_FILE" up -d backend
   fi
-
-  # Stop current containers
-  docker compose -f "$COMPOSE_FILE" stop backend
-
-  # Start with previous image
-  docker compose -f "$COMPOSE_FILE" up -d backend
 
   # Health check after rollback
   if health_check "$HEALTH_CHECK_URL" "$HEALTH_CHECK_RETRIES" "$HEALTH_CHECK_INTERVAL"; then

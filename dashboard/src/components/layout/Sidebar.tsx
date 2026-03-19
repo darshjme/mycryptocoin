@@ -219,6 +219,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className="p-3 border-t border-[rgba(99,102,241,0.08)]">
         <button
           onClick={onToggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-slate-300 hover:bg-white/[0.03] transition-all text-xs"
         >
           <svg

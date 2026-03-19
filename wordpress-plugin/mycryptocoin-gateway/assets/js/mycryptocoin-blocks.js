@@ -70,7 +70,7 @@
 
 		var descText = description;
 		if ( testMode ) {
-			descText += ' (TEST MODE — no real crypto will be charged)';
+			descText += ' ' + wp.i18n.__( '(TEST MODE — no real crypto will be charged)', 'mycryptocoin-gateway' );
 		}
 
 		return wp.element.createElement(
@@ -80,7 +80,7 @@
 			wp.element.createElement(
 				'p',
 				{ className: 'mycryptocoin-select-label' },
-				'Select your preferred cryptocurrency:'
+				wp.i18n.__( 'Select your preferred cryptocurrency:', 'mycryptocoin-gateway' )
 			),
 			wp.element.createElement(
 				'div',

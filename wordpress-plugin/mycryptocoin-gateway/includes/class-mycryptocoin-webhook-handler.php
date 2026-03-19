@@ -62,6 +62,19 @@ class MyCryptoCoin_Webhook_Handler {
 	public function get_payment_status( $request ) {
 		$session_id = $request->get_param( 'session_id' );
 
+		// Rate-limit by IP to prevent brute-force enumeration of session IDs.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated
+		$ip            = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '0.0.0.0';
+		$rate_key      = 'mcc_rate_' . md5( $ip );
+		$request_count = (int) get_transient( $rate_key );
+		if ( $request_count > 120 ) { // 120 requests per minute per IP.
+			return new WP_REST_Response(
+				array( 'status' => 'pending', 'message' => 'Rate limit exceeded.' ),
+				429
+			);
+		}
+		set_transient( $rate_key, $request_count + 1, MINUTE_IN_SECONDS );
+
 		$order = $this->find_order_by_session_id( $session_id );
 
 		if ( ! $order ) {
@@ -475,6 +488,17 @@ class MyCryptoCoin_Webhook_Handler {
 				sprintf( 'Webhook: order %d was not paid via MyCryptoCoin.', $order_id )
 			);
 			return false;
+		}
+
+		// Cross-check the payment_id stored on the order with the webhook payload.
+		if ( isset( $payload['payment_id'] ) ) {
+			$stored_payment_id = $order->get_meta( '_mycryptocoin_payment_id' );
+			if ( ! empty( $stored_payment_id ) && $stored_payment_id !== sanitize_text_field( $payload['payment_id'] ) ) {
+				MyCryptoCoin_Logger::error(
+					sprintf( 'Webhook: payment_id mismatch for order %d. Stored: %s, Received: %s', $order_id, $stored_payment_id, $payload['payment_id'] )
+				);
+				return false;
+			}
 		}
 
 		return $order;

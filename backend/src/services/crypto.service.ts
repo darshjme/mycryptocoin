@@ -9,6 +9,7 @@ import { env } from '../config/env';
 import { CryptoError } from '../utils/errors';
 import { logger } from '../utils/logger';
 import { toSmallestUnit, fromSmallestUnit } from '../utils/crypto';
+import { circuitBreakers } from '../utils/circuitBreaker';
 import crypto from 'crypto';
 
 const bip32 = BIP32Factory(ecc);
@@ -351,7 +352,9 @@ export class CryptoService {
   }
 
   private async getEthBalance(address: string): Promise<Decimal> {
-    const balance = await this.ethProvider.getBalance(address);
+    const balance = await circuitBreakers.ethRpc.execute(
+      () => this.ethProvider.getBalance(address),
+    );
     return fromSmallestUnit(balance, 18);
   }
 
@@ -367,34 +370,44 @@ export class CryptoService {
   }
 
   private async getBscBalance(address: string): Promise<Decimal> {
-    const balance = await this.bscProvider.getBalance(address);
+    const balance = await circuitBreakers.bscRpc.execute(
+      () => this.bscProvider.getBalance(address),
+    );
     return fromSmallestUnit(balance, 18);
   }
 
   private async getMaticBalance(address: string): Promise<Decimal> {
-    const balance = await this.maticProvider.getBalance(address);
+    const balance = await circuitBreakers.maticRpc.execute(
+      () => this.maticProvider.getBalance(address),
+    );
     return fromSmallestUnit(balance, 18);
   }
 
   private async getEthConfirmations(txHash: string): Promise<number> {
-    const receipt = await this.ethProvider.getTransactionReceipt(txHash);
-    if (!receipt || !receipt.blockNumber) return 0;
-    const currentBlock = await this.ethProvider.getBlockNumber();
-    return currentBlock - receipt.blockNumber + 1;
+    return circuitBreakers.ethRpc.execute(async () => {
+      const receipt = await this.ethProvider.getTransactionReceipt(txHash);
+      if (!receipt || !receipt.blockNumber) return 0;
+      const currentBlock = await this.ethProvider.getBlockNumber();
+      return currentBlock - receipt.blockNumber + 1;
+    });
   }
 
   private async getBscConfirmations(txHash: string): Promise<number> {
-    const receipt = await this.bscProvider.getTransactionReceipt(txHash);
-    if (!receipt || !receipt.blockNumber) return 0;
-    const currentBlock = await this.bscProvider.getBlockNumber();
-    return currentBlock - receipt.blockNumber + 1;
+    return circuitBreakers.bscRpc.execute(async () => {
+      const receipt = await this.bscProvider.getTransactionReceipt(txHash);
+      if (!receipt || !receipt.blockNumber) return 0;
+      const currentBlock = await this.bscProvider.getBlockNumber();
+      return currentBlock - receipt.blockNumber + 1;
+    });
   }
 
   private async getMaticConfirmations(txHash: string): Promise<number> {
-    const receipt = await this.maticProvider.getTransactionReceipt(txHash);
-    if (!receipt || !receipt.blockNumber) return 0;
-    const currentBlock = await this.maticProvider.getBlockNumber();
-    return currentBlock - receipt.blockNumber + 1;
+    return circuitBreakers.maticRpc.execute(async () => {
+      const receipt = await this.maticProvider.getTransactionReceipt(txHash);
+      if (!receipt || !receipt.blockNumber) return 0;
+      const currentBlock = await this.maticProvider.getBlockNumber();
+      return currentBlock - receipt.blockNumber + 1;
+    });
   }
 
   private async sendEthTransaction(params: {
@@ -519,14 +532,18 @@ export class CryptoService {
 
   private async getSolBalance(address: string): Promise<Decimal> {
     const pubkey = new PublicKey(address);
-    const balance = await this.solConnection.getBalance(pubkey);
+    const balance = await circuitBreakers.solRpc.execute(
+      () => this.solConnection.getBalance(pubkey),
+    );
     return fromSmallestUnit(BigInt(balance), 9);
   }
 
   private async getSolConfirmations(txHash: string): Promise<number> {
-    const status = await this.solConnection.getSignatureStatus(txHash);
-    if (!status.value) return 0;
-    return status.value.confirmations || (status.value.confirmationStatus === 'finalized' ? 32 : 0);
+    return circuitBreakers.solRpc.execute(async () => {
+      const status = await this.solConnection.getSignatureStatus(txHash);
+      if (!status.value) return 0;
+      return status.value.confirmations || (status.value.confirmationStatus === 'finalized' ? 32 : 0);
+    });
   }
 
   private async sendSolTransaction(params: {

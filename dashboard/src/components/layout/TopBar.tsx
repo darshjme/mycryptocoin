@@ -70,6 +70,7 @@ export default function TopBar() {
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
+              aria-label="Settings"
               className="relative p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -99,7 +100,7 @@ export default function TopBar() {
           </div>
 
           {/* Notification bell */}
-          <button className="relative p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+          <button aria-label="Notifications" className="relative p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 23">
               <path fillRule="evenodd" clipRule="evenodd" d="M18.71 8.56c0 1.18.33 1.87 1.06 2.67.55.59.73 1.35.73 2.17 0 .82-.29 1.6-.86 2.23-.75.76-1.82 1.24-2.9 1.32-1.57.13-3.14.23-4.74.23-1.59 0-3.17-.06-4.74-.23-1.08-.08-2.15-.56-2.9-1.32-.56-.63-.86-1.41-.86-2.23 0-.82.18-1.58.73-2.17.76-.8 1.07-1.49 1.07-2.67v-.4c0-1.58.42-2.6 1.28-3.61 1.29-1.47 3.35-2.36 5.38-2.36h.09c2.08 0 4.2.92 5.47 2.46.82.99 1.2 1.98 1.2 3.51v.4zM9.07 19.11c0-.47.46-.69.89-.78.5-.1 3.55-.1 4.05 0 .43.09.9.31.9.78-.03.45-.31.85-.7 1.1-.5.37-1.09.6-1.71.69-.34.04-.69.04-1.02 0-.62-.09-1.19-.32-1.7-.69-.39-.25-.67-.65-.7-1.1z" />
             </svg>
@@ -114,6 +115,7 @@ export default function TopBar() {
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setShowProfile(!showProfile)}
+              aria-label="User menu"
               className="flex items-center"
             >
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-sm font-bold text-white overflow-hidden">

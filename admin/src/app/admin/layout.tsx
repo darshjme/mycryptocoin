@@ -180,6 +180,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <button
             onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all"
           >
             <span className="material-icons text-lg">{sidebarCollapsed ? 'menu_open' : 'menu'}</span>
@@ -267,6 +268,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="relative" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
+                  aria-label="Notifications"
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors relative"
                   style={{ background: 'rgba(255,255,255,0.04)' }}
                 >
@@ -305,6 +307,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="relative" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
+                  aria-label="User menu"
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>

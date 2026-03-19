@@ -38,12 +38,14 @@ router.post(
 
 router.post(
   '/verify-email',
+  strictRateLimiter,
   validate({ body: verifyEmailSchema }),
   authController.verifyEmail,
 );
 
 router.post(
   '/refresh-token',
+  strictRateLimiter,
   validate({ body: refreshTokenSchema }),
   authController.refreshToken,
 );

@@ -5,10 +5,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAdminStore } from '@/stores/adminStore';
 
-const navItems = [
+interface NavItem {
+  label: string;
+  href: string;
+  badge?: string;
+  section?: string;
+  icon: React.ReactNode;
+}
+
+const navItems: NavItem[] = [
+  // MAIN MENU
   {
     label: 'Dashboard',
     href: '/admin/dashboard',
+    section: 'MAIN MENU',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -71,12 +81,91 @@ const navItems = [
       </svg>
     ),
   },
+  // INTEGRATIONS
   {
     label: 'WhatsApp',
     href: '/admin/whatsapp',
+    section: 'INTEGRATIONS',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+      </svg>
+    ),
+  },
+  // OPERATIONS
+  {
+    label: 'Approvals',
+    href: '/admin/approvals',
+    section: 'OPERATIONS',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="8.5" cy="7" r="4" />
+        <polyline points="17 11 19 13 23 9" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Reserves',
+    href: '/admin/reserves',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-0.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2" />
+        <path d="M2 9v1c0 1.1.9 2 2 2h1" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Compliance',
+    href: '/admin/compliance',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <polyline points="9 12 11 14 15 10" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Fraud Alerts',
+    href: '/admin/fraud',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+    ),
+  },
+  // SYSTEM
+  {
+    label: 'Security',
+    href: '/admin/security',
+    section: 'SYSTEM',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0110 0v4" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Audit Log',
+    href: '/admin/audit',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="12 8 12 12 14 14" />
+        <circle cx="12" cy="12" r="10" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Emergency',
+    href: '/admin/emergency',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
       </svg>
     ),
   },
@@ -155,6 +244,7 @@ export default function AdminSidebar() {
       <div className="px-3 py-3 border-t border-white/5">
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className="w-full flex items-center justify-center p-2.5 rounded-xl text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
         >
           <svg

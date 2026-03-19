@@ -221,10 +221,10 @@ log "Setting up automated backup cron jobs"
 crontab -u "$APP_USER" - << 'CRON'
 # MyCryptoCoin automated backups
 # Every 6 hours: run database backup
-0 */6 * * * cd /opt/mycryptocoin && docker compose -f docker-compose.prod.yml exec -T postgres-primary pg_dump -U mycryptocoin mycryptocoin --format=custom --compress=9 > /var/backups/mycryptocoin/mycryptocoin-$(date +\%Y\%m\%d-\%H\%M\%S).sql.gz 2>/dev/null
+0 */6 * * * cd /opt/mycryptocoin && docker compose -f docker-compose.prod.yml exec -T postgres-primary pg_dump -U mycryptocoin mycryptocoin --format=custom --compress=9 > /var/backups/mycryptocoin/mycryptocoin-$(date +\%Y\%m\%d-\%H\%M\%S).dump 2>/dev/null
 
 # Daily at 3 AM: cleanup old backups (keep 7 days)
-0 3 * * * find /var/backups/mycryptocoin -name "*.sql.gz" -mtime +7 -delete 2>/dev/null
+0 3 * * * find /var/backups/mycryptocoin -name "*.dump" -mtime +7 -delete 2>/dev/null
 
 # Weekly Sunday at 4 AM: Docker system prune
 0 4 * * 0 docker system prune -f 2>/dev/null

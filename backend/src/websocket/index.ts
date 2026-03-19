@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { JwtPayload } from '../middleware/auth';
 import { logger } from '../utils/logger';
+import { prisma } from '../config/database';
 
 let wsServer: WebSocketServer | null = null;
 
@@ -116,11 +117,44 @@ export class WebSocketServer {
       );
 
       // Handle subscription to specific payment updates
-      socket.on('subscribe:payment', (paymentId: string) => {
-        socket.join(`payment:${paymentId}`);
-        logger.debug(
-          `Merchant ${merchant.merchantId} subscribed to payment ${paymentId}`,
-        );
+      // SECURITY: verify the payment belongs to this merchant before joining
+      socket.on('subscribe:payment', async (paymentId: string) => {
+        if (!paymentId || typeof paymentId !== 'string') {
+          socket.emit('error', { message: 'Invalid payment ID' });
+          return;
+        }
+
+        try {
+          const payment = await prisma.payment.findFirst({
+            where: {
+              id: paymentId,
+              merchantId: merchant.merchantId,
+            },
+            select: { id: true },
+          });
+
+          if (!payment) {
+            socket.emit('error', {
+              message: 'Payment not found or access denied',
+            });
+            logger.warn(
+              `Merchant ${merchant.merchantId} attempted to subscribe to unauthorized payment ${paymentId}`,
+            );
+            return;
+          }
+
+          socket.join(`payment:${paymentId}`);
+          logger.debug(
+            `Merchant ${merchant.merchantId} subscribed to payment ${paymentId}`,
+          );
+        } catch (err) {
+          logger.error('Error verifying payment subscription', {
+            merchantId: merchant.merchantId,
+            paymentId,
+            error: (err as Error).message,
+          });
+          socket.emit('error', { message: 'Failed to subscribe to payment' });
+        }
       });
 
       socket.on('unsubscribe:payment', (paymentId: string) => {

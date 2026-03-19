@@ -196,8 +196,30 @@ export const getWhatsappQr = asyncHandler(
 export const sendWhatsappOtp = asyncHandler(
   async (req: Request, res: Response) => {
     const { phone, purpose } = req.body;
-    const otp = await otpService.generateOTP(phone, purpose || 'admin');
-    const sent = await whatsappService.sendOTP(phone, otp);
+
+    // Validate phone number format
+    if (!phone || typeof phone !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Phone number is required' },
+      });
+      return;
+    }
+
+    const cleaned = phone.replace(/[^0-9]/g, '');
+    if (cleaned.length < 7 || cleaned.length > 15) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid phone number format (expected 7-15 digits)',
+        },
+      });
+      return;
+    }
+
+    const otp = await otpService.generateOTP(cleaned, purpose || 'admin');
+    const sent = await whatsappService.sendOTP(cleaned, otp);
 
     res.status(200).json({
       success: true,
