@@ -63,6 +63,24 @@ const envSchema = z.object({
   // Payment defaults
   PAYMENT_EXPIRY_MINUTES: z.coerce.number().default(30),
 
+  // Exchange APIs (Conversion Engine)
+  BINANCE_API_KEY: z.string().default(''),
+  BINANCE_API_SECRET: z.string().default(''),
+  KRAKEN_API_KEY: z.string().default(''),
+  KRAKEN_API_SECRET: z.string().default(''),
+  ONEINCH_API_KEY: z.string().default(''),
+
+  // Owner wallet (receives 0.5% platform fees as USDT TRC-20)
+  OWNER_WALLET_ADDRESS: z.string().default(''),
+  OWNER_WALLET_PRIVATE_KEY_ENCRYPTED: z.string().default(''),
+
+  // Conversion thresholds (USDT equivalent)
+  CONVERSION_VIRTUAL_MAX: z.coerce.number().default(500),
+  CONVERSION_DEX_MAX: z.coerce.number().default(10000),
+
+  // Encryption master key (32-byte hex for AES-256-GCM)
+  ENCRYPTION_MASTER_KEY: z.string().default(''),
+
   // CORS
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 

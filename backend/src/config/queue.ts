@@ -135,6 +135,17 @@ const QUEUE_CONFIGS: QueueConfig[] = [
       removeOnFail: false,
     },
   },
+  {
+    name: QUEUE_NAMES.CONVERSION_PROCESSING,
+    concurrency: 5,
+    defaultPriority: 2, // same as payment processing
+    defaultJobOpts: {
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 10_000 },
+      removeOnComplete: { age: 604_800, count: 10_000 }, // 7 days
+      removeOnFail: false,
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
