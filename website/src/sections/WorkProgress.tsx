@@ -1,36 +1,50 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Image from 'next/image';
 
 const steps = [
   {
     num: 1,
-    icon: '/images/icon/11.png',
+    iconClass: 'fa-brands fa-whatsapp',
+    iconColor: '#22C55E',
+    gradFrom: '#22C55E',
+    gradTo: '#4ADE80',
     title: 'Sign Up with WhatsApp',
     description: 'Create your account in seconds using WhatsApp verification. No lengthy KYC for basic accounts.',
   },
   {
     num: 2,
-    icon: '/images/icon/12.png',
+    iconClass: 'fa-solid fa-key',
+    iconColor: '#F59E0B',
+    gradFrom: '#F59E0B',
+    gradTo: '#FBBF24',
     title: 'Get API Keys',
     description: 'Generate your live and test API keys instantly from the developer dashboard.',
   },
   {
     num: 3,
-    icon: '/images/icon/13.png',
+    iconClass: 'fa-solid fa-code',
+    iconColor: '#3B82F6',
+    gradFrom: '#3B82F6',
+    gradTo: '#60A5FA',
     title: 'Integrate SDK',
     description: 'Use our REST API, WordPress plugin, or pre-built SDKs to start accepting payments.',
   },
   {
     num: 4,
-    icon: '/images/icon/11.png',
+    iconClass: 'fa-solid fa-wallet',
+    iconColor: '#8B5CF6',
+    gradFrom: '#8B5CF6',
+    gradTo: '#A78BFA',
     title: 'Accept Payments',
     description: 'Your customers pay in crypto. We handle conversion, confirmation, and settlement.',
   },
   {
     num: 5,
-    icon: '/images/icon/12.png',
+    iconClass: 'fa-solid fa-money-bill-transfer',
+    iconColor: '#22C55E',
+    gradFrom: '#22C55E',
+    gradTo: '#4ADE80',
     title: 'Auto Withdraw',
     description: 'Funds are automatically sent to your wallet on your schedule, or withdraw manually anytime.',
   },
@@ -58,7 +72,6 @@ export default function WorkProgress() {
 
   return (
     <section id="progress" className="py-20 md:py-28 relative overflow-hidden" ref={sectionRef}>
-      {/* Background matching template's bg-color */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/[0.02] to-transparent pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -74,7 +87,6 @@ export default function WorkProgress() {
           </div>
         </div>
 
-        {/* Progress cards - horizontal scroll on mobile, grid on desktop */}
         <div className="flex gap-6 overflow-x-auto pb-4 lg:grid lg:grid-cols-5 lg:overflow-visible scrollbar-hide">
           {steps.map((step, i) => (
             <div
@@ -84,8 +96,11 @@ export default function WorkProgress() {
               data-aos-delay={String(i * 100)}
             >
               <div className="glass-card rounded-2xl p-6 h-full relative group">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500/15 to-purple-500/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                  <Image src={step.icon} alt={step.title} width={32} height={32} className="opacity-80" />
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"
+                  style={{ background: `linear-gradient(135deg, ${step.gradFrom}22, ${step.gradTo}33)` }}
+                >
+                  <i className={step.iconClass} style={{ color: step.iconColor, fontSize: '22px' }} />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">{step.description}</p>

@@ -6,10 +6,11 @@ interface CounterItemProps {
   target: number;
   suffix: string;
   label: string;
+  iconClass: string;
   inView: boolean;
 }
 
-function CounterItem({ target, suffix, label, inView }: CounterItemProps) {
+function CounterItem({ target, suffix, label, iconClass, inView }: CounterItemProps) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -31,6 +32,11 @@ function CounterItem({ target, suffix, label, inView }: CounterItemProps) {
 
   return (
     <div className="text-center">
+      <div className="flex justify-center mb-4">
+        <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15))' }}>
+          <i className={iconClass} style={{ fontSize: '24px', color: '#60A5FA' }} />
+        </div>
+      </div>
       <h2 className="text-5xl md:text-6xl font-extrabold text-white mb-2">
         <span>{count}</span>
         <span className="text-gradient">{suffix}</span>
@@ -41,9 +47,9 @@ function CounterItem({ target, suffix, label, inView }: CounterItemProps) {
 }
 
 const counters = [
-  { target: 500, suffix: '+', label: 'Active Merchants' },
-  { target: 10, suffix: '+', label: 'Cryptocurrencies' },
-  { target: 50, suffix: 'M+', label: 'USD Processed' },
+  { target: 500, suffix: '+', label: 'Active Merchants', iconClass: 'fa-solid fa-users' },
+  { target: 10, suffix: '+', label: 'Cryptocurrencies', iconClass: 'fa-solid fa-coins' },
+  { target: 50, suffix: 'M+', label: 'USD Processed', iconClass: 'fa-solid fa-chart-line' },
 ];
 
 export default function Counter() {

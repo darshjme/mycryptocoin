@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Image from 'next/image';
 
 export default function Contact() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -25,12 +24,33 @@ export default function Contact() {
 
   return (
     <section id="contact" className="relative py-20 md:py-28 overflow-hidden" ref={sectionRef}>
-      {/* Decorative shapes */}
-      <div className="absolute top-10 right-10 opacity-10 pointer-events-none hidden lg:block">
-        <Image src="/images/shape/26.png" alt="" width={200} height={200} />
+      {/* Decorative gradient orbs replacing shape images */}
+      <div className="absolute top-10 right-10 w-[200px] h-[200px] opacity-20 pointer-events-none hidden lg:block">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="orbGrad1" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="100" cy="100" r="90" fill="url(#orbGrad1)">
+            <animate attributeName="r" values="80;100;80" dur="6s" repeatCount="indefinite" />
+          </circle>
+        </svg>
       </div>
-      <div className="absolute bottom-10 left-10 opacity-10 pointer-events-none hidden lg:block">
-        <Image src="/images/shape/30.png" alt="" width={150} height={150} />
+      <div className="absolute bottom-10 left-10 w-[150px] h-[150px] opacity-15 pointer-events-none hidden lg:block">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="orbGrad2" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <ellipse cx="100" cy="100" rx="85" ry="95" fill="url(#orbGrad2)">
+            <animate attributeName="rx" values="75;95;75" dur="8s" repeatCount="indefinite" />
+            <animate attributeName="ry" values="95;75;95" dur="8s" repeatCount="indefinite" />
+          </ellipse>
+        </svg>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
