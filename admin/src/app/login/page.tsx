@@ -1,13 +1,30 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { isAdminMockMode, ADMIN_DEMO_CREDENTIALS } from '@/lib/mockData';
 
 export default function LoginPage() {
   const { login, verifyOtp, loading, error, otpRequired, setError } = useAdminAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
+  const [demoMode, setDemoMode] = useState(false);
+
+  useEffect(() => {
+    if (isAdminMockMode()) {
+      setDemoMode(true);
+      setEmail(ADMIN_DEMO_CREDENTIALS.email);
+      setPassword(ADMIN_DEMO_CREDENTIALS.password);
+    }
+  }, []);
+
+  // In demo mode, auto-fill OTP when OTP screen appears
+  useEffect(() => {
+    if (demoMode && otpRequired) {
+      setOtp(ADMIN_DEMO_CREDENTIALS.otp);
+    }
+  }, [demoMode, otpRequired]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -31,13 +48,22 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg-body)' }}>
+      {/* Demo Mode Banner */}
+      {demoMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-amber-500/90 to-orange-500/90 backdrop-blur-sm text-white text-center py-2.5 px-4 text-sm font-medium shadow-lg">
+          Demo Mode &mdash; Email: <code className="bg-black/20 px-1.5 py-0.5 rounded text-xs font-mono">{ADMIN_DEMO_CREDENTIALS.email}</code>{' '}
+          Password: <code className="bg-black/20 px-1.5 py-0.5 rounded text-xs font-mono">{ADMIN_DEMO_CREDENTIALS.password}</code>{' '}
+          OTP: <code className="bg-black/20 px-1.5 py-0.5 rounded text-xs font-mono">{ADMIN_DEMO_CREDENTIALS.otp}</code>
+        </div>
+      )}
+
       {/* Background decorations like CryptoZone */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%)' }} />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full opacity-15" style={{ background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)' }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-md animate-in">
+      <div className={`relative z-10 w-full max-w-md animate-in ${demoMode ? 'mt-10' : ''}`}>
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}>
@@ -120,7 +146,9 @@ export default function LoginPage() {
                 <span className="material-icons text-emerald-400">verified</span>
                 <div>
                   <p className="text-sm text-emerald-300 font-medium">OTP Sent</p>
-                  <p className="text-xs text-slate-400">Check your WhatsApp for the 6-digit code</p>
+                  <p className="text-xs text-slate-400">
+                    {demoMode ? 'Demo mode: OTP is pre-filled below' : 'Check your WhatsApp for the 6-digit code'}
+                  </p>
                 </div>
               </div>
               <div>
