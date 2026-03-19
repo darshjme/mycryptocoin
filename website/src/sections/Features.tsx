@@ -4,22 +4,22 @@ import { useEffect, useRef } from 'react';
 
 const features = [
   {
-    iconClass: 'fa-solid fa-coins',
-    title: 'Multi-Crypto Support',
+    iconClass: 'fa-solid fa-arrows-rotate',
+    title: 'Auto-Convert to USDT',
     description:
-      'Accept BTC, ETH, USDT, SOL, BNB, and 10+ cryptocurrencies through a single unified API integration.',
+      'Every payment is instantly converted to USDT TRC-20. Accept BTC, ETH, SOL — your balance is always in stable USDT. Zero volatility risk.',
   },
   {
     iconClass: 'fa-solid fa-bolt-lightning',
-    title: 'Instant Settlement',
+    title: 'Instant USDT Settlement',
     description:
-      'Real-time payment confirmations with auto-conversion. Funds settle to your wallet within minutes, not days.',
+      'Funds settle in USDT within minutes. Withdraw anytime to your TRON wallet. Ultra-low network fees (~$1). No more waiting days.',
   },
   {
     iconClass: 'fa-solid fa-shield-halved',
     title: 'Enterprise Security',
     description:
-      'End-to-end encryption, HMAC webhook signatures, WhatsApp-based 2FA, and HD wallet generation for maximum protection.',
+      'End-to-end encryption, HMAC webhook signatures, WhatsApp-based 2FA, multi-sig withdrawals, and proof of reserves.',
   },
 ];
 

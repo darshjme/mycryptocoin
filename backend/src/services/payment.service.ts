@@ -13,6 +13,7 @@ import { env } from '../config/env';
 import { cryptoService } from './crypto.service';
 import { walletService } from './wallet.service';
 import { feeService } from './fee.service';
+import { conversionService } from './conversion.service';
 import { webhookService } from './webhook.service';
 import { notificationService } from './notification.service';
 import { generatePaymentId } from '../utils/helpers';
@@ -244,7 +245,15 @@ export class PaymentService {
   }
 
   /**
-   * Process a confirmed payment: deduct fee, credit merchant, trigger webhook.
+   * Process a confirmed payment: convert to USDT, deduct fee, credit merchant's
+   * single USDT TRC-20 wallet, trigger webhook.
+   *
+   * Flow:
+   * 1. Receive payment in original crypto (BTC, ETH, SOL, etc.)
+   * 2. Fetch exchange rate at confirmation time (crypto -> USDT)
+   * 3. Calculate USDT equivalent amount
+   * 4. Deduct 0.5% platform fee from USDT amount
+   * 5. Credit merchant's single USDT TRC-20 balance
    *
    * Uses a Prisma interactive transaction with idempotency check to prevent
    * double-credits when concurrent monitoring loops or manual verification
@@ -253,12 +262,18 @@ export class PaymentService {
   private async processConfirmedPayment(payment: any): Promise<void> {
     const network = payment.network as CryptoNetwork;
     const token = payment.token as TokenSymbol;
-    const amount = new Decimal(payment.cryptoAmount || payment.amount);
+    const originalAmount = new Decimal(payment.cryptoAmount || payment.amount);
 
-    // Calculate fee outside transaction (pure computation)
-    const { netAmount, feeAmount } = feeService.calculateFee(amount);
+    // Convert received crypto to USDT equivalent at current rate
+    const { usdtAmount, rate: exchangeRate } = await conversionService.convertToUsdt(
+      originalAmount,
+      token,
+    );
 
-    // Atomic transaction: check status + record fee + credit balance + mark paid
+    // Calculate fee on the USDT amount (0.5%)
+    const { netAmount, feeAmount } = feeService.calculateFee(usdtAmount);
+
+    // Atomic transaction: check status + record fee + credit USDT balance + mark paid
     // This prevents double-credits from concurrent calls.
     const alreadyCompleted = await prisma.$transaction(async (tx) => {
       // Re-read payment inside transaction to check current status (idempotency guard)
@@ -271,36 +286,38 @@ export class PaymentService {
         return true;
       }
 
-      // Record fee
+      // Record fee in USDT
       await tx.feeRecord.create({
         data: {
           paymentId: payment.id,
           merchantId: payment.merchantId,
-          network,
-          token,
-          grossAmount: amount,
+          network: 'TRON' as CryptoNetwork,
+          token: 'USDT' as TokenSymbol,
+          grossAmount: usdtAmount,
           feeRate: new Decimal(PLATFORM_FEE_RATE),
           feeAmount,
           netAmount,
         },
       });
 
-      // Credit merchant wallet balance atomically
+      // Credit merchant's SINGLE USDT TRC-20 wallet balance atomically
+      // All merchants now settle in USDT regardless of which crypto was received
       await tx.wallet.updateMany({
-        where: { merchantId: payment.merchantId, network, token },
+        where: { merchantId: payment.merchantId, network: 'TRON' as CryptoNetwork, token: 'USDT' as TokenSymbol },
         data: {
           balance: { increment: netAmount },
           totalReceived: { increment: netAmount },
         },
       });
 
-      // Update payment status to PAID
+      // Update payment status to PAID with conversion details
       await tx.payment.update({
         where: { id: payment.id },
         data: {
           status: PaymentStatus.PAID,
           fee: feeAmount,
-          receivedAmount: amount,
+          exchangeRate,
+          receivedAmount: originalAmount,
           paidAt: new Date(),
         },
       });
@@ -318,14 +335,19 @@ export class PaymentService {
     await redis.srem('payments:monitoring', payment.id);
     await redis.srem('payments:confirming', payment.id);
 
-    // Dispatch webhook
+    // Dispatch webhook with conversion details
     await webhookService.dispatch(payment.merchantId, 'payment.completed', {
       paymentId: payment.id,
-      amount: amount.toString(),
+      originalCrypto: token,
+      originalAmount: originalAmount.toString(),
+      exchangeRate: exchangeRate.toString(),
+      usdtAmount: usdtAmount.toString(),
+      feeAmount: feeAmount.toString(),
+      netCredited: netAmount.toString(),
+      settlementCurrency: 'USDT',
+      settlementNetwork: 'TRC-20',
       network,
       token,
-      feeAmount: feeAmount.toString(),
-      netAmount: netAmount.toString(),
       txHash: payment.txHash,
     });
 
@@ -337,7 +359,7 @@ export class PaymentService {
     if (merchant) {
       await notificationService.sendPaymentNotification(merchant, {
         paymentId: payment.id,
-        amount: amount.toString(),
+        amount: originalAmount.toString(),
         network,
         token,
         status: PaymentStatus.PAID,
@@ -346,7 +368,7 @@ export class PaymentService {
     }
 
     logger.info(
-      `Payment completed: ${payment.id} — net ${netAmount} ${token} (fee: ${feeAmount})`,
+      `Payment completed: ${payment.id} — ${originalAmount} ${token} -> ${usdtAmount} USDT (fee: ${feeAmount} USDT, net: ${netAmount} USDT)`,
     );
   }
 

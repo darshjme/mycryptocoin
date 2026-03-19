@@ -4,6 +4,7 @@ import ScrollToTop from '@/components/ScrollToTop';
 import Hero from '@/sections/Hero';
 import MarketStats from '@/sections/MarketStats';
 import Features from '@/sections/Features';
+import AutoConvert from '@/sections/AutoConvert';
 import UseCases from '@/sections/UseCases';
 import Services from '@/sections/Services';
 import AppsOverview from '@/sections/AppsOverview';
@@ -25,6 +26,7 @@ export default function Home() {
         <Hero />
         <MarketStats />
         <Features />
+        <AutoConvert />
         <UseCases />
         <Services />
         <AppsOverview />

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 const competitors = [
-  { name: 'MyCryptoCoin', fee: '0.5%', setup: 'Free', monthly: 'Free', settlement: 'Instant', highlight: true },
+  { name: 'MyCryptoCoin', fee: '0.5%', setup: 'Free', monthly: 'Free', settlement: 'Instant USDT', highlight: true },
   { name: 'BitPay', fee: '1%', setup: '$300', monthly: '$0', settlement: '1-2 days', highlight: false },
   { name: 'Coinbase Commerce', fee: '1%', setup: 'Free', monthly: '$0', settlement: '2-3 days', highlight: false },
   { name: 'CoinGate', fee: '1%', setup: 'Free', monthly: '$0', settlement: '1 day', highlight: false },
@@ -47,16 +47,20 @@ export default function Pricing() {
               0.5<span className="text-gradient">%</span>
             </div>
             <p className="text-xl text-gray-300 mb-2">per transaction</p>
-            <p className="text-gray-500 mb-8 max-w-md mx-auto">
+            <p className="text-gray-500 mb-4 max-w-md mx-auto">
               No monthly fees. No setup fees. No hidden charges. Just pay for what you process.
             </p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-8">
+              <i className="fa-solid fa-arrows-rotate text-emerald-400 text-sm" />
+              <span className="text-emerald-400 text-sm font-medium">All payments auto-converted to USDT TRC-20 — zero volatility</span>
+            </div>
             <div className="flex flex-wrap justify-center gap-6 mb-10">
               {[
                 'No monthly fees',
                 'No setup costs',
                 'No minimum volume',
-                'Instant settlement',
-                'All cryptos included',
+                'Settle in USDT TRC-20',
+                'Accept 10+ cryptos',
                 'Free API access',
               ].map((feature, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-gray-300">

@@ -30,6 +30,7 @@ export class FeeService {
 
   /**
    * Record a fee transaction in the database.
+   * All fees are now recorded in USDT since all payments are auto-converted.
    */
   async recordFee(params: {
     paymentId: string;
@@ -38,12 +39,15 @@ export class FeeService {
     grossAmount: Decimal;
     feeAmount: Decimal;
     netAmount: Decimal;
+    originalCrypto?: string;
+    originalAmount?: Decimal;
+    exchangeRate?: Decimal;
   }): Promise<void> {
     await prisma.feeRecord.create({
       data: {
         paymentId: params.paymentId,
         merchantId: params.merchantId,
-        crypto: params.crypto,
+        crypto: 'USDT', // All fees are now in USDT
         grossAmount: params.grossAmount,
         feeAmount: params.feeAmount,
         netAmount: params.netAmount,
@@ -51,12 +55,14 @@ export class FeeService {
     });
 
     logger.info(
-      `Fee recorded: ${params.feeAmount.toString()} ${params.crypto} from payment ${params.paymentId}`,
+      `Fee recorded: ${params.feeAmount.toString()} USDT from payment ${params.paymentId}` +
+      (params.originalCrypto ? ` (original: ${params.originalAmount} ${params.originalCrypto}, rate: ${params.exchangeRate})` : ''),
     );
   }
 
   /**
-   * Get total fee revenue across all cryptos or for a specific one.
+   * Get total fee revenue. All fees are now in USDT since payments are
+   * auto-converted to USDT TRC-20 before fee calculation.
    */
   async getTotalRevenue(crypto?: string): Promise<
     Array<{
@@ -66,6 +72,7 @@ export class FeeService {
       paymentCount: number;
     }>
   > {
+    // All fees are in USDT now; crypto filter is kept for backward compatibility
     const where = crypto ? { crypto } : {};
 
     const result = await prisma.feeRecord.groupBy({

@@ -195,8 +195,8 @@ export default function Hero() {
             <span className="text-white/90">Revolution starts here.</span>
           </h1>
           <p className="text-lg md:text-xl text-gray-400 max-w-xl mb-10 leading-relaxed">
-            A revolutionary crypto payment gateway for the future of digital commerce.
-            Just <span className="text-blue-400 font-semibold">0.5%</span> per transaction.
+            Accept any crypto. Get settled in <span className="text-emerald-400 font-semibold">USDT</span> instantly.
+            Zero volatility risk. Just <span className="text-blue-400 font-semibold">0.5%</span> per transaction.
           </p>
           <div className="flex flex-wrap gap-4">
             <a
