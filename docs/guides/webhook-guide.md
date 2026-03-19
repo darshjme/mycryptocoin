@@ -236,6 +236,52 @@ http_response_code(200);
 echo json_encode(['received' => true]);
 ```
 
+### Ruby (Sinatra)
+
+```ruby
+require 'sinatra'
+require 'json'
+require 'openssl'
+
+WEBHOOK_SECRET = ENV.fetch('MCC_WEBHOOK_SECRET')
+
+post '/webhooks/mycryptocoin' do
+  request.body.rewind
+  raw_body = request.body.read
+  signature = request.env['HTTP_X_MCC_SIGNATURE'] || ''
+  timestamp = request.env['HTTP_X_MCC_TIMESTAMP'] || ''
+
+  # Check required headers
+  if signature.empty? || timestamp.empty?
+    halt 401, { 'Content-Type' => 'application/json' },
+         { error: 'Missing signature headers' }.to_json
+  end
+
+  # Prevent replay attacks
+  if (Time.now.to_i - timestamp.to_i).abs > 300
+    halt 401, { 'Content-Type' => 'application/json' },
+         { error: 'Request timestamp too old' }.to_json
+  end
+
+  # Compute expected signature
+  payload = "#{timestamp}.#{raw_body}"
+  expected = 'sha256=' + OpenSSL::HMAC.hexdigest('SHA256', WEBHOOK_SECRET, payload)
+
+  # Timing-safe comparison
+  unless Rack::Utils.secure_compare(signature, expected)
+    halt 401, { 'Content-Type' => 'application/json' },
+         { error: 'Invalid signature' }.to_json
+  end
+
+  # Signature verified
+  event = JSON.parse(raw_body)
+  handle_event(event)
+
+  content_type :json
+  { received: true }.to_json
+end
+```
+
 ### Go
 
 ```go
