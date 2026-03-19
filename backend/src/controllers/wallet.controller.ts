@@ -3,14 +3,22 @@ import { walletService } from '../services/wallet.service';
 import { withdrawalService } from '../services/withdrawal.service';
 import { CryptoSymbol } from '../config/crypto';
 import { asyncHandler } from '../middleware/errorHandler';
-import { parsePagination, buildPaginatedResult } from '../utils/helpers';
+
+/**
+ * Build a CryptoSymbol from route params.
+ * Routes use /:network/:token, CryptoSymbol is "NETWORK:TOKEN".
+ */
+function cryptoFromParams(req: Request): CryptoSymbol {
+  const { network, token } = req.params;
+  return `${network}:${token}` as CryptoSymbol;
+}
 
 export const getWallets = asyncHandler(async (req: Request, res: Response) => {
   const wallets = await walletService.getMerchantWallets(req.merchant!.id);
 
   res.status(200).json({
     success: true,
-    data: wallets.map((w) => ({
+    data: wallets.map((w: any) => ({
       crypto: w.crypto,
       address: w.address,
       balance: w.balance.toString(),
@@ -25,7 +33,7 @@ export const getWallets = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getWallet = asyncHandler(async (req: Request, res: Response) => {
-  const crypto = req.params.crypto as CryptoSymbol;
+  const crypto = cryptoFromParams(req);
   const wallet = await walletService.getWallet(req.merchant!.id, crypto);
 
   res.status(200).json({
@@ -47,7 +55,7 @@ export const getWallet = asyncHandler(async (req: Request, res: Response) => {
 
 export const configureAutoWithdraw = asyncHandler(
   async (req: Request, res: Response) => {
-    const crypto = req.params.crypto as CryptoSymbol;
+    const crypto = cryptoFromParams(req);
     const wallet = await walletService.configureAutoWithdraw(
       req.merchant!.id,
       crypto,
@@ -68,7 +76,7 @@ export const configureAutoWithdraw = asyncHandler(
 );
 
 export const withdraw = asyncHandler(async (req: Request, res: Response) => {
-  const crypto = req.params.crypto as CryptoSymbol;
+  const crypto = cryptoFromParams(req);
   const withdrawal = await withdrawalService.requestWithdrawal(
     req.merchant!.id,
     crypto,
@@ -82,7 +90,7 @@ export const withdraw = asyncHandler(async (req: Request, res: Response) => {
       crypto: withdrawal.crypto,
       amount: withdrawal.amount.toString(),
       toAddress: withdrawal.toAddress,
-      estimatedFee: withdrawal.estimatedFee.toString(),
+      estimatedFee: withdrawal.estimatedFee?.toString(),
       status: withdrawal.status,
       createdAt: withdrawal.createdAt,
     },

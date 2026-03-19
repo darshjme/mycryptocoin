@@ -1,16 +1,26 @@
 import { CryptoNetwork, TokenSymbol } from '@mycryptocoin/shared';
-import { cryptoKey, SUPPORTED_CRYPTOS, type CryptoKey } from '../config/crypto';
+import { cryptoKey, SUPPORTED_CRYPTOS, type CryptoKey, CryptoSymbol } from '../config/crypto';
 import { Decimal } from '@prisma/client/runtime/library';
 
 /**
+ * Resolve a network string (could be CryptoNetwork or CryptoSymbol "NETWORK:TOKEN").
+ */
+function resolveNetwork(networkOrSymbol: string): CryptoNetwork {
+  if (networkOrSymbol.includes(':')) {
+    return networkOrSymbol.split(':')[0] as CryptoNetwork;
+  }
+  return networkOrSymbol as CryptoNetwork;
+}
+
+/**
  * Validate a cryptocurrency address against its expected format.
- * Uses network-level regex (addresses are network-specific, not token-specific).
+ * Accepts either a CryptoNetwork string or a CryptoSymbol ("NETWORK:TOKEN").
  */
 export function validateCryptoAddress(
   address: string,
-  network: CryptoNetwork,
+  networkOrSymbol: string,
 ): boolean {
-  // Find any config for this network to get the address regex
+  const network = resolveNetwork(networkOrSymbol);
   const configs = Object.values(SUPPORTED_CRYPTOS).filter(c => c.network === network);
   if (configs.length === 0) return false;
   return configs[0].addressRegex.test(address);
@@ -90,13 +100,24 @@ export function getSmallestUnitName(token: TokenSymbol): string {
 /**
  * Check if an amount meets the minimum deposit requirement for a given crypto.
  */
+/**
+ * Check if an amount meets the minimum requirement.
+ * Accepts (amount, network, token) or (amount, cryptoSymbol) for backward compat.
+ */
 export function meetsMinimumAmount(
   amount: string | Decimal,
-  network: CryptoNetwork,
-  token: TokenSymbol,
+  networkOrSymbol: string,
+  token?: string,
 ): boolean {
-  const key = cryptoKey(network, token);
+  let key: string;
+  if (token) {
+    key = cryptoKey(networkOrSymbol as CryptoNetwork, token as TokenSymbol);
+  } else {
+    // Legacy CryptoSymbol usage: value is already a CryptoKey like "BITCOIN:BTC"
+    key = networkOrSymbol;
+  }
   const config = SUPPORTED_CRYPTOS[key];
+  if (!config) return false;
   const value = new Decimal(amount.toString());
   const minimum = new Decimal(config.minDeposit);
   return value.gte(minimum);
