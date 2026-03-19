@@ -854,6 +854,268 @@ try {
 
 ---
 
+## Ruby
+
+### Setup
+
+```ruby
+# mcc_client.rb
+require 'net/http'
+require 'json'
+require 'uri'
+
+class MCCError < StandardError
+  attr_reader :code, :http_status, :request_id, :details
+
+  def initialize(code, message, http_status, request_id, details = {})
+    super(message)
+    @code = code
+    @http_status = http_status
+    @request_id = request_id
+    @details = details
+  end
+end
+
+class MCCClient
+  BASE_URL = ENV.fetch('MCC_API_BASE', 'https://api.mycrypto.co.in/api/v1')
+
+  def initialize(api_key: nil, base_url: nil)
+    @api_key = api_key || ENV.fetch('MCC_API_KEY') { raise 'MCC_API_KEY environment variable is not set' }
+    @base_url = base_url || BASE_URL
+  end
+
+  def create_payment(amount:, currency: 'USD', crypto:, **options)
+    body = { amount: amount, currency: currency, crypto: crypto }.merge(options)
+    request(:post, '/payments/create', body)
+  end
+
+  def get_payment(payment_id)
+    request(:get, "/payments/#{payment_id}")
+  end
+
+  def verify_payment(payment_id, tx_hash)
+    request(:post, "/payments/#{payment_id}/verify", { txHash: tx_hash })
+  end
+
+  def list_payments(**filters)
+    request(:get, '/payments', nil, filters)
+  end
+
+  def get_wallets
+    request(:get, '/wallets')
+  end
+
+  def get_wallet(crypto)
+    request(:get, "/wallets/#{crypto}")
+  end
+
+  def create_withdrawal(crypto:, amount:, address:, memo: nil)
+    body = { amount: amount, address: address }
+    body[:memo] = memo if memo
+    request(:post, "/wallets/#{crypto}/withdraw", body)
+  end
+
+  def configure_auto_withdraw(crypto:, enabled:, address: nil, threshold: nil)
+    body = { enabled: enabled }
+    body[:address] = address if address
+    body[:threshold] = threshold if threshold
+    request(:put, "/wallets/#{crypto}/auto-withdraw", body)
+  end
+
+  private
+
+  def request(method, path, body = nil, params = nil)
+    uri = URI("#{@base_url}#{path}")
+    uri.query = URI.encode_www_form(params) if params&.any?
+
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == 'https'
+    http.open_timeout = 10
+    http.read_timeout = 30
+
+    req = case method
+          when :get    then Net::HTTP::Get.new(uri)
+          when :post   then Net::HTTP::Post.new(uri)
+          when :put    then Net::HTTP::Put.new(uri)
+          when :delete then Net::HTTP::Delete.new(uri)
+          end
+
+    req['X-API-Key'] = @api_key
+    req['Content-Type'] = 'application/json'
+
+    if body
+      req.body = body.to_json
+    end
+
+    response = http.request(req)
+    data = JSON.parse(response.body)
+    request_id = response['X-Request-Id']
+
+    unless response.is_a?(Net::HTTPSuccess)
+      error = data['error'] || {}
+      raise MCCError.new(
+        error['code'] || 'unknown',
+        error['message'] || 'Unknown error',
+        response.code.to_i,
+        request_id,
+        error['details'] || {}
+      )
+    end
+
+    data
+  end
+end
+```
+
+### Create a Payment
+
+```ruby
+require_relative 'mcc_client'
+
+mcc = MCCClient.new
+
+begin
+  payment = mcc.create_payment(
+    amount: '99.99',
+    currency: 'USD',
+    crypto: 'USDT_ERC20',
+    description: 'Order #ORD-12345',
+    metadata: {
+      order_id: 'ORD-12345',
+      customer_email: 'buyer@example.com',
+    },
+    callbackUrl: 'https://yoursite.com/webhooks/mycryptocoin',
+    redirectUrl: 'https://yoursite.com/orders/ORD-12345/complete',
+    expiryMinutes: 30
+  )
+
+  puts "Payment created: #{payment['id']}"
+  puts "Checkout URL: #{payment['checkout_url']}"
+  puts "Deposit address: #{payment['deposit_address']}"
+  puts "Amount: #{payment['crypto_amount']} #{payment['crypto']}"
+  puts "Expires at: #{payment['expires_at']}"
+
+rescue MCCError => e
+  case e.code
+  when 'invalid_request'
+    puts "Invalid payment data: #{e.details}"
+  else
+    puts "Error [#{e.request_id}]: #{e.code} - #{e.message}"
+  end
+end
+```
+
+### Handle Webhooks (Sinatra)
+
+```ruby
+require 'sinatra'
+require 'json'
+require 'openssl'
+
+WEBHOOK_SECRET = ENV.fetch('MCC_WEBHOOK_SECRET')
+
+# Track processed deliveries (use Redis in production)
+processed_deliveries = Set.new
+
+post '/webhooks/mycryptocoin' do
+  request.body.rewind
+  raw_body = request.body.read
+  signature = request.env['HTTP_X_MCC_SIGNATURE'] || ''
+  timestamp = request.env['HTTP_X_MCC_TIMESTAMP'] || ''
+
+  # Step 1: Verify required headers
+  if signature.empty? || timestamp.empty?
+    halt 401, { error: 'Missing signature headers' }.to_json
+  end
+
+  # Step 2: Prevent replay attacks (5-minute window)
+  if (Time.now.to_i - timestamp.to_i).abs > 300
+    halt 401, { error: 'Request timestamp too old' }.to_json
+  end
+
+  # Step 3: Verify HMAC-SHA256 signature
+  payload = "#{timestamp}.#{raw_body}"
+  expected = 'sha256=' + OpenSSL::HMAC.hexdigest('SHA256', WEBHOOK_SECRET, payload)
+
+  unless Rack::Utils.secure_compare(signature, expected)
+    halt 401, { error: 'Invalid signature' }.to_json
+  end
+
+  # Step 4: Deduplicate
+  delivery_id = request.env['HTTP_X_MCC_DELIVERY_ID']
+  if processed_deliveries.include?(delivery_id)
+    return { received: true }.to_json
+  end
+
+  # Step 5: Process the event
+  event = JSON.parse(raw_body)
+  event_type = event['type']
+  data = event['data']
+
+  case event_type
+  when 'payment.confirmed'
+    order_id = data.dig('metadata', 'order_id')
+    puts "Payment #{data['id']} confirmed for order #{order_id}"
+    puts "Amount: #{data['crypto_amount']} #{data['crypto']}"
+    # fulfill_order(order_id)
+
+  when 'payment.failed'
+    order_id = data.dig('metadata', 'order_id')
+    puts "Payment #{data['id']} failed for order #{order_id}"
+
+  when 'payment.expired'
+    order_id = data.dig('metadata', 'order_id')
+    puts "Payment #{data['id']} expired for order #{order_id}"
+
+  when 'withdrawal.completed'
+    puts "Withdrawal #{data['id']} completed: #{data['net_amount']} #{data['crypto']}"
+
+  when 'withdrawal.failed'
+    puts "Withdrawal #{data['id']} failed: #{data['amount']} #{data['crypto']}"
+  end
+
+  processed_deliveries.add(delivery_id)
+  content_type :json
+  { received: true }.to_json
+end
+```
+
+### Process a Withdrawal
+
+```ruby
+require_relative 'mcc_client'
+
+mcc = MCCClient.new
+
+begin
+  withdrawal = mcc.create_withdrawal(
+    crypto: 'BTC',
+    amount: '0.05000000',
+    address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
+  )
+
+  puts "Withdrawal initiated: #{withdrawal['id']}"
+  puts "Amount: #{withdrawal['amount']} BTC"
+  puts "Network fee: #{withdrawal['network_fee']} BTC"
+  puts "Net amount: #{withdrawal['net_amount']} BTC"
+  puts "Status: #{withdrawal['status']}"
+
+rescue MCCError => e
+  case e.code
+  when 'insufficient_balance'
+    puts "Not enough funds: #{e.message}"
+  when 'invalid_address'
+    puts "Invalid address: #{e.message}"
+  when 'below_minimum'
+    puts "Below minimum: #{e.details}"
+  else
+    puts "Error [#{e.request_id}]: #{e.code} - #{e.message}"
+  end
+end
+```
+
+---
+
 ## cURL
 
 ### Authentication
