@@ -37,6 +37,7 @@ export interface CryptoOperations {
 
 export class CryptoService {
   private masterSeed: Buffer;
+  private bip32Root: ReturnType<typeof bip32.fromSeed>;
   private ethProvider: ethers.JsonRpcProvider;
   private bscProvider: ethers.JsonRpcProvider;
   private maticProvider: ethers.JsonRpcProvider;
@@ -44,6 +45,10 @@ export class CryptoService {
 
   constructor() {
     this.masterSeed = Buffer.from(env.HD_MASTER_SEED, 'hex');
+    // Cache the BIP32 root key -- fromSeed() is expensive (secp256k1 scalar multiplication).
+    // Without caching, every address generation or key derivation repeats this O(1)-but-slow
+    // elliptic curve operation, blocking the event loop for 5-15ms each time.
+    this.bip32Root = bip32.fromSeed(this.masterSeed);
     this.ethProvider = new ethers.JsonRpcProvider(env.ETH_RPC_URL);
     this.bscProvider = new ethers.JsonRpcProvider(env.BSC_RPC_URL);
     this.maticProvider = new ethers.JsonRpcProvider(env.MATIC_RPC_URL);
@@ -286,8 +291,7 @@ export class CryptoService {
       return seedHash.subarray(0, 32).toString('hex');
     }
 
-    const root = bip32.fromSeed(this.masterSeed);
-    const child = root.derivePath(fullPath);
+    const child = this.bip32Root.derivePath(fullPath);
     return Buffer.from(child.privateKey!).toString('hex');
   }
 
@@ -299,8 +303,7 @@ export class CryptoService {
     paymentIndex: number,
   ): { address: string; publicKey: string; derivationPath: string } {
     const fullPath = `${basePath}/${merchantIndex}/${paymentIndex}`;
-    const root = bip32.fromSeed(this.masterSeed);
-    const child = root.derivePath(fullPath);
+    const child = this.bip32Root.derivePath(fullPath);
 
     const { address } = bitcoin.payments.p2wpkh({
       pubkey: Buffer.from(child.publicKey),
@@ -339,8 +342,7 @@ export class CryptoService {
     paymentIndex: number,
   ): { address: string; publicKey: string; derivationPath: string } {
     const fullPath = `${basePath}/${merchantIndex}/${paymentIndex}`;
-    const root = bip32.fromSeed(this.masterSeed);
-    const child = root.derivePath(fullPath);
+    const child = this.bip32Root.derivePath(fullPath);
     const wallet = new ethers.Wallet(
       Buffer.from(child.privateKey!).toString('hex'),
     );
@@ -595,8 +597,7 @@ export class CryptoService {
     paymentIndex: number,
   ): { address: string; publicKey: string; derivationPath: string } {
     const fullPath = `${basePath}/${merchantIndex}/${paymentIndex}`;
-    const root = bip32.fromSeed(this.masterSeed);
-    const child = root.derivePath(fullPath);
+    const child = this.bip32Root.derivePath(fullPath);
 
     // TRON address derivation: keccak256 of UNCOMPRESSED public key (sans 04 prefix),
     // take last 20 bytes, prefix with 0x41.
@@ -844,8 +845,7 @@ export class CryptoService {
     paymentIndex: number,
   ): { address: string; publicKey: string; derivationPath: string } {
     const fullPath = `${basePath}/${merchantIndex}/${paymentIndex}`;
-    const root = bip32.fromSeed(this.masterSeed);
-    const child = root.derivePath(fullPath);
+    const child = this.bip32Root.derivePath(fullPath);
 
     // Litecoin uses similar structure to BTC with different version bytes
     const ltcNetwork = {
@@ -893,8 +893,7 @@ export class CryptoService {
     paymentIndex: number,
   ): { address: string; publicKey: string; derivationPath: string } {
     const fullPath = `${basePath}/${merchantIndex}/${paymentIndex}`;
-    const root = bip32.fromSeed(this.masterSeed);
-    const child = root.derivePath(fullPath);
+    const child = this.bip32Root.derivePath(fullPath);
 
     const dogeNetwork = {
       messagePrefix: '\x19Dogecoin Signed Message:\n',
@@ -939,8 +938,7 @@ export class CryptoService {
     paymentIndex: number,
   ): { address: string; publicKey: string; derivationPath: string } {
     const fullPath = `${basePath}/${merchantIndex}/${paymentIndex}`;
-    const root = bip32.fromSeed(this.masterSeed);
-    const child = root.derivePath(fullPath);
+    const child = this.bip32Root.derivePath(fullPath);
 
     // XRP address: RIPEMD160(SHA256(publicKey)) + checksum, base58
     const pubKeyBuffer = Buffer.from(child.publicKey);

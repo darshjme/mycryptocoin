@@ -1,6 +1,6 @@
 # SDK Examples
 
-Copy-paste ready code examples for integrating MyCryptoCoin in JavaScript/Node.js, Python, PHP, and cURL.
+Copy-paste ready code examples for integrating MyCryptoCoin in JavaScript/Node.js, Python, PHP, Ruby, and cURL.
 
 ---
 
@@ -9,6 +9,7 @@ Copy-paste ready code examples for integrating MyCryptoCoin in JavaScript/Node.j
 - [JavaScript / Node.js](#javascript--nodejs)
 - [Python](#python)
 - [PHP](#php)
+- [Ruby](#ruby)
 - [cURL](#curl)
 
 ---

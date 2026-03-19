@@ -68,6 +68,18 @@ tags:
     description: Manage webhook endpoints for event notifications
   - name: Merchant
     description: Merchant profile and API key management
+  - name: Checkout
+    description: Hosted checkout sessions with white-label support
+  - name: Invoices
+    description: Professional invoice creation, emailing, and payment tracking
+  - name: Refunds
+    description: Full and partial refunds for completed payments
+  - name: Discounts
+    description: Coupon and discount code management
+  - name: White-Label
+    description: Customize checkout branding, colors, domains, and CSS
+  - name: Rates
+    description: Public exchange rate data (no authentication required)
 
 components:
   securitySchemes:
@@ -2326,3 +2338,807 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+
+  # ═══════════════════════════════════════════════════════════════
+  #  CHECKOUT SESSIONS
+  # ═══════════════════════════════════════════════════════════════
+
+  /checkout/session:
+    post:
+      operationId: createCheckoutSession
+      tags: [Checkout]
+      summary: Create a hosted checkout session
+      description: |
+        Create a checkout session that redirects your customer to a
+        MyCryptoCoin-hosted payment page. Supports multiple display modes
+        (page, popup, inline, hidden), optional discount codes, and
+        white-label theming.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+              properties:
+                amount:
+                  type: string
+                  description: Payment amount as decimal string
+                  example: "99.99"
+                currency:
+                  type: string
+                  default: USD
+                  example: USD
+                displayMode:
+                  type: string
+                  enum: [page, popup, inline, hidden]
+                  default: page
+                  description: How the checkout page is displayed
+                allowedCryptos:
+                  type: array
+                  items:
+                    type: string
+                  description: "Restrict which cryptos are shown (e.g., ['ETHEREUM:ETH', 'TRON:USDT'])"
+                customerEmail:
+                  type: string
+                  format: email
+                externalId:
+                  type: string
+                  description: Your internal order/reference ID
+                callbackUrl:
+                  type: string
+                  format: uri
+                successUrl:
+                  type: string
+                  format: uri
+                  description: Redirect URL after successful payment
+                cancelUrl:
+                  type: string
+                  format: uri
+                  description: Redirect URL if customer cancels
+                metadata:
+                  type: object
+                  additionalProperties:
+                    type: string
+                discountCode:
+                  type: string
+                  description: Optional discount code to apply
+      responses:
+        '201':
+          description: Checkout session created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      sessionId:
+                        type: string
+                        example: "cs_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+                      checkoutUrl:
+                        type: string
+                        example: "https://mycrypto.co.in/pay/cs_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+                      displayMode:
+                        type: string
+                        example: page
+                      expiresAt:
+                        type: string
+                        format: date-time
+                      amount:
+                        type: string
+                        example: "94.99"
+                      currency:
+                        type: string
+                        example: USD
+                      discount:
+                        type: object
+                        nullable: true
+                        properties:
+                          code:
+                            type: string
+                          discountAmount:
+                            type: string
+                          finalAmount:
+                            type: string
+                      merchantName:
+                        type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /checkout/{sessionId}:
+    get:
+      operationId: getCheckoutSession
+      tags: [Checkout]
+      summary: Get checkout session data (public)
+      description: Public endpoint that returns session data for rendering the hosted checkout page.
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Checkout session data including merchant info, theme, and available cryptos
+        '404':
+          description: Session not found or expired
+        '410':
+          description: Session has expired
+
+  /checkout/{sessionId}/status:
+    get:
+      operationId: getCheckoutSessionStatus
+      tags: [Checkout]
+      summary: Poll checkout session status
+      description: Lightweight endpoint for polling payment status during checkout.
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session and payment status
+        '404':
+          description: Session not found
+
+  # ═══════════════════════════════════════════════════════════════
+  #  INVOICES
+  # ═══════════════════════════════════════════════════════════════
+
+  /invoices:
+    post:
+      operationId: createInvoice
+      tags: [Invoices]
+      summary: Create a professional invoice
+      description: |
+        Create an invoice with line items, tax calculation, and a payment link.
+        The invoice can be emailed to the customer with a hosted payment page.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lineItems
+              properties:
+                customerName:
+                  type: string
+                  example: "John Doe"
+                customerEmail:
+                  type: string
+                  format: email
+                  example: "john@example.com"
+                customerAddress:
+                  type: string
+                lineItems:
+                  type: array
+                  items:
+                    type: object
+                    required: [description, quantity, unitPrice, amount]
+                    properties:
+                      description:
+                        type: string
+                        example: "Web Development Services"
+                      quantity:
+                        type: number
+                        example: 10
+                      unitPrice:
+                        type: string
+                        example: "150.00"
+                      amount:
+                        type: string
+                        example: "1500.00"
+                  minItems: 1
+                currency:
+                  type: string
+                  default: USD
+                taxRate:
+                  type: number
+                  description: "Tax percentage (e.g., 18 for 18%)"
+                  example: 18
+                dueDate:
+                  type: string
+                  format: date
+                notes:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '201':
+          description: Invoice created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      operationId: listInvoices
+      tags: [Invoices]
+      summary: List invoices
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, SENT, VIEWED, PAID, OVERDUE, CANCELLED]
+        - name: customerEmail
+          in: query
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated list of invoices
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [Invoices]
+      summary: Get invoice details
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice details
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      operationId: updateInvoice
+      tags: [Invoices]
+      summary: Update an invoice
+      description: Update invoice fields before it is paid.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customerName:
+                  type: string
+                customerEmail:
+                  type: string
+                lineItems:
+                  type: array
+                  items:
+                    type: object
+                dueDate:
+                  type: string
+                  format: date
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Invoice updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      operationId: cancelInvoice
+      tags: [Invoices]
+      summary: Cancel an invoice
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice cancelled
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /invoices/{id}/send:
+    post:
+      operationId: sendInvoice
+      tags: [Invoices]
+      summary: Email invoice to customer
+      description: Sends the invoice as a PDF attachment via email with a payment link.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice sent
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ═══════════════════════════════════════════════════════════════
+  #  REFUNDS
+  # ═══════════════════════════════════════════════════════════════
+
+  /payments/{id}/refund:
+    post:
+      operationId: createRefund
+      tags: [Refunds]
+      summary: Initiate a refund
+      description: |
+        Refund a completed payment, either fully or partially. You can refund
+        in the original cryptocurrency or opt to refund in USDT. If no
+        `toAddress` is provided, the refund is sent to the original sender address.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Payment ID to refund
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  description: "Refund amount (omit for full refund)"
+                  example: "50.00"
+                reason:
+                  type: string
+                  description: Reason for the refund
+                  example: "Customer requested cancellation"
+                toAddress:
+                  type: string
+                  description: "Destination address (defaults to original sender)"
+                refundInUsdt:
+                  type: boolean
+                  description: "Refund in USDT instead of original crypto"
+                  default: false
+      responses:
+        '201':
+          description: Refund initiated
+        '400':
+          description: Payment not eligible for refund
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /refunds:
+    get:
+      operationId: listRefunds
+      tags: [Refunds]
+      summary: List refunds
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: paymentId
+          in: query
+          schema:
+            type: string
+          description: Filter by original payment ID
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: List of refunds
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /refunds/{id}:
+    get:
+      operationId: getRefund
+      tags: [Refunds]
+      summary: Get refund details
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Refund details
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ═══════════════════════════════════════════════════════════════
+  #  DISCOUNT CODES
+  # ═══════════════════════════════════════════════════════════════
+
+  /discounts:
+    post:
+      operationId: createDiscount
+      tags: [Discounts]
+      summary: Create a discount code
+      description: |
+        Create a discount code (coupon) for use in checkout sessions.
+        Supports percentage and fixed-amount discounts, usage limits,
+        per-customer limits, minimum order amounts, and expiry dates.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, value]
+              properties:
+                code:
+                  type: string
+                  description: "Custom code (auto-generated if omitted)"
+                  example: "SUMMER25"
+                type:
+                  type: string
+                  enum: [PERCENTAGE, FIXED]
+                  example: PERCENTAGE
+                value:
+                  type: string
+                  description: "Discount value"
+                  example: "10"
+                maxUses:
+                  type: integer
+                  example: 100
+                perCustomerLimit:
+                  type: integer
+                  example: 1
+                minOrderAmount:
+                  type: string
+                  example: "50.00"
+                applicableCheckoutIds:
+                  type: array
+                  items:
+                    type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Discount created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      operationId: listDiscounts
+      tags: [Discounts]
+      summary: List discount codes
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: List of discounts
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /discounts/validate:
+    post:
+      operationId: validateDiscount
+      tags: [Discounts]
+      summary: Validate a discount code
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, amount]
+              properties:
+                code:
+                  type: string
+                  example: "SUMMER25"
+                amount:
+                  type: string
+                  example: "99.99"
+                customerEmail:
+                  type: string
+                  format: email
+                checkoutId:
+                  type: string
+      responses:
+        '200':
+          description: Validation result with discounted amount
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /discounts/{id}:
+    get:
+      operationId: getDiscount
+      tags: [Discounts]
+      summary: Get discount details
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Discount details
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      operationId: deactivateDiscount
+      tags: [Discounts]
+      summary: Deactivate a discount code
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Discount deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ═══════════════════════════════════════════════════════════════
+  #  WHITE-LABEL
+  # ═══════════════════════════════════════════════════════════════
+
+  /whitelabel:
+    get:
+      operationId: getWhiteLabelConfig
+      tags: [White-Label]
+      summary: Get white-label configuration
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Current white-label/branding settings
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      operationId: updateWhiteLabelConfig
+      tags: [White-Label]
+      summary: Update white-label configuration
+      description: |
+        Customize the look and feel of your hosted checkout pages, invoices,
+        and email communications. Premium features include custom domain
+        (CNAME) and branding removal.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logoUrl:
+                  type: string
+                  format: uri
+                primaryColor:
+                  type: string
+                  description: "Hex color (e.g., #6366f1)"
+                secondaryColor:
+                  type: string
+                accentColor:
+                  type: string
+                customDomain:
+                  type: string
+                  description: "Custom checkout domain (e.g., pay.yourdomain.com)"
+                customSenderName:
+                  type: string
+                customSenderEmail:
+                  type: string
+                  format: email
+                removeBranding:
+                  type: boolean
+                  description: "Remove MyCryptoCoin branding (premium)"
+                customCss:
+                  type: string
+                faviconUrl:
+                  type: string
+                  format: uri
+                companyName:
+                  type: string
+                supportEmail:
+                  type: string
+                  format: email
+                termsUrl:
+                  type: string
+                  format: uri
+                privacyUrl:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Configuration updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /whitelabel/verify-domain:
+    post:
+      operationId: verifyCustomDomain
+      tags: [White-Label]
+      summary: Verify custom domain CNAME
+      description: |
+        After setting a custom domain, add a CNAME record pointing to
+        `checkout.mycrypto.co.in`. Then call this endpoint to verify DNS propagation.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Domain verification result
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ═══════════════════════════════════════════════════════════════
+  #  EXCHANGE RATES (PUBLIC)
+  # ═══════════════════════════════════════════════════════════════
+
+  /rates:
+    get:
+      operationId: getAllRates
+      tags: [Rates]
+      summary: Get all exchange rates (public, no auth)
+      description: |
+        Returns current USD, USDT, and BTC exchange rates for all supported
+        cryptocurrencies. Data refreshes every 60 seconds. No authentication required.
+      responses:
+        '200':
+          description: Exchange rates for all supported assets
+
+  /rates/{crypto}:
+    get:
+      operationId: getCryptoRate
+      tags: [Rates]
+      summary: Get specific crypto rate (public, no auth)
+      description: "Query by token symbol (BTC), network:token (ETHEREUM:ETH), or name (Bitcoin)."
+      parameters:
+        - name: crypto
+          in: path
+          required: true
+          schema:
+            type: string
+          example: BTC
+      responses:
+        '200':
+          description: Exchange rate for the specified crypto
+        '404':
+          description: Rate not found

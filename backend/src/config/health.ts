@@ -7,7 +7,6 @@
  */
 
 import { Request, Response, Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { getRedisClient } from './redis';
 import { logger } from '../utils/logger';
 import os from 'node:os';
@@ -39,10 +38,12 @@ interface HealthResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Prisma client (reuse singleton)
+// Prisma client — reuse the application singleton instead of creating a new one.
+// Creating a separate PrismaClient here leaks a connection pool (20+ connections)
+// that never gets closed on shutdown.
 // ---------------------------------------------------------------------------
 
-const prisma = new PrismaClient();
+import { prisma } from './database';
 
 // ---------------------------------------------------------------------------
 // Individual checks
