@@ -1,0 +1,39 @@
+{
+  "name": "mycryptocoin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MyCryptoCoin — Multi-crypto payment gateway monorepo",
+  "homepage": "https://mycrypto.co.in",
+  "workspaces": [
+    "backend",
+    "dashboard",
+    "admin",
+    "website",
+    "shared"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "dev:admin": "npm run dev --workspace=admin",
+    "dev:website": "npm run dev --workspace=website",
+    "build:shared": "npm run build --workspace=shared",
+    "build:backend": "npm run build --workspace=backend",
+    "build:dashboard": "npm run build --workspace=dashboard",
+    "build:admin": "npm run build --workspace=admin",
+    "build:website": "npm run build --workspace=website",
+    "build:all": "npm run build:shared && npm run build:backend && npm run build:dashboard && npm run build:admin && npm run build:website",
+    "db:migrate": "npm run prisma:migrate --workspace=backend",
+    "db:generate": "npm run prisma:generate --workspace=backend",
+    "db:seed": "npm run prisma:seed --workspace=backend",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "rm -rf node_modules */node_modules */dist */.next"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "author": "MyCryptoCoin <dev@mycrypto.co.in>",
+  "license": "UNLICENSED"
+}

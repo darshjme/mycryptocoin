@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyCryptoCoin — The Stripe of Crypto Payments | Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --red: #ef4444;
+    --dark-bg: #0a0a0f;
+    --card-bg: rgba(255,255,255,0.05);
+    --card-border: rgba(255,255,255,0.08);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    --gradient-accent: linear-gradient(135deg, #06b6d4, #3b82f6);
+    --gradient-warm: linear-gradient(135deg, #f59e0b, #ef4444);
+  }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== SLIDE SYSTEM ===== */
+  .slide {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide-inner {
+    max-width: 1100px;
+    width: 100%;
+    z-index: 1;
+  }
+
+  .slide-number {
+    position: absolute;
+    bottom: 30px;
+    right: 40px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+  }
+
+  /* ===== TYPOGRAPHY ===== */
+  h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; }
+  h2 { font-size: 2.75rem; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 1.5rem; }
+  h3 { font-size: 1.5rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.75rem; }
+  h4 { font-size: 1.15rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.5rem; }
+  p { font-size: 1.125rem; color: var(--text-secondary); line-height: 1.7; }
+  .subtitle { font-size: 1.35rem; color: var(--text-secondary); font-weight: 400; margin-top: 1rem; }
+
+  .gradient-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 1rem;
+  }
+
+  /* ===== CARDS & GRIDS ===== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 32px;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+
+  .card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.15); }
+
+  .card-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* ===== DECORATIVE ELEMENTS ===== */
+  .bg-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  .bg-glow-blue { background: var(--blue); width: 500px; height: 500px; }
+  .bg-glow-purple { background: var(--purple); width: 400px; height: 400px; }
+  .bg-glow-cyan { background: var(--cyan); width: 350px; height: 350px; }
+
+  /* ===== SPECIFIC COMPONENTS ===== */
+  .stat-box {
+    text-align: center;
+    padding: 24px;
+  }
+  .stat-box .value {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+  .stat-box .label-small {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .step {
+    text-align: center;
+    position: relative;
+  }
+  .step-number {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 auto 1.25rem;
+    color: #fff;
+  }
+  .step-connector {
+    position: absolute;
+    top: 32px;
+    left: calc(50% + 40px);
+    width: calc(100% - 80px);
+    height: 2px;
+    background: var(--gradient-primary);
+    opacity: 0.3;
+  }
+
+  .crypto-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    text-align: center;
+  }
+  .crypto-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: #fff;
+  }
+  .crypto-name { font-size: 0.8rem; font-weight: 600; }
+  .crypto-symbol { font-size: 0.7rem; color: var(--text-muted); }
+
+  .pricing-table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+  .pricing-table th, .pricing-table td {
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--card-border);
+    font-size: 0.95rem;
+  }
+  .pricing-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .pricing-table .highlight td {
+    color: var(--cyan);
+    font-weight: 700;
+    background: rgba(6,182,212,0.05);
+  }
+  .pricing-table .check { color: var(--green); }
+  .pricing-table .cross { color: var(--red); opacity: 0.5; }
+
+  .timeline-item {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+  .timeline-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    margin-top: 6px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .timeline-dot::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: 6px;
+    width: 2px;
+    height: 40px;
+    background: rgba(139,92,246,0.2);
+  }
+  .timeline-item:last-child .timeline-dot::after { display: none; }
+  .timeline-date { font-size: 0.8rem; color: var(--cyan); font-weight: 700; letter-spacing: 0.05em; }
+
+  .cta-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 40px;
+    background: var(--gradient-primary);
+    color: #fff;
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    margin-top: 1.5rem;
+  }
+
+  .use-case-slide {
+    background-size: cover;
+    background-position: center;
+  }
+  .use-case-overlay {
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(4px);
+    border-radius: 20px;
+    padding: 48px;
+    border: 1px solid var(--card-border);
+  }
+  .use-case-tag {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+  }
+
+  .feature-list { list-style: none; }
+  .feature-list li {
+    position: relative;
+    padding-left: 28px;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-size: 1rem;
+  }
+  .feature-list li::before {
+    content: "\2713";
+    position: absolute;
+    left: 0;
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  .security-grid-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+  }
+  .security-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+  }
+
+  .contact-row {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+  }
+  .contact-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+  }
+  .contact-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+
+  /* ===== PRINT STYLES ===== */
+  @media print {
+    body { background: #0a0a0f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .slide {
+      page-break-after: always;
+      page-break-inside: avoid;
+      min-height: 100vh;
+      height: 100vh;
+    }
+    .slide:last-child { page-break-after: auto; }
+    .bg-glow { display: none; }
+    .card:hover { transform: none; }
+  }
+
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== SLIDE 1: TITLE ========== -->
+<section class="slide" style="text-align: center;">
+  <div class="bg-glow bg-glow-blue" style="top: -200px; left: -100px;"></div>
+  <div class="bg-glow bg-glow-purple" style="bottom: -150px; right: -100px;"></div>
+  <div class="slide-inner" style="display: flex; flex-direction: column; align-items: center;">
+    <div style="font-size: 1.1rem; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem;">Investor Deck &mdash; 2026</div>
+    <h1 style="font-size: 4.5rem; margin-bottom: 0.5rem;">
+      My<span class="gradient-text">Crypto</span>Coin
+    </h1>
+    <p style="font-size: 1.75rem; color: var(--text-secondary); font-weight: 500; margin-top: 0.5rem; margin-bottom: 2rem;">
+      The Stripe of Crypto Payments
+    </p>
+    <div style="display: flex; gap: 24px; margin-top: 1rem; flex-wrap: wrap; justify-content: center;">
+      <div style="padding: 10px 24px; border-radius: 100px; background: var(--card-bg); border: 1px solid var(--card-border); font-size: 0.9rem; font-weight: 600;">0.5% Transaction Fee</div>
+      <div style="padding: 10px 24px; border-radius: 100px; background: var(--card-bg); border: 1px solid var(--card-border); font-size: 0.9rem; font-weight: 600;">10+ Cryptocurrencies</div>
+      <div style="padding: 10px 24px; border-radius: 100px; background: var(--card-bg); border: 1px solid var(--card-border); font-size: 0.9rem; font-weight: 600;">Instant Settlement</div>
+    </div>
+    <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 3rem;">mycrypto.co.in</p>
+  </div>
+  <div class="slide-number">01 / 20</div>
+</section>
+
+<!-- ========== SLIDE 2: THE PROBLEM ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-purple" style="top: 50%; left: -200px; transform: translateY(-50%);"></div>
+  <div class="slide-inner">
+    <span class="label">The Problem</span>
+    <h2>Accepting crypto payments<br>is <span style="color: var(--red);">broken</span>.</h2>
+    <p style="max-width: 700px; margin-bottom: 3rem;">
+      Businesses want to accept cryptocurrency, but the current landscape is filled with complexity, high costs, and risk. Here's what merchants face today:
+    </p>
+    <div class="grid-2" style="gap: 24px;">
+      <div class="card">
+        <h4 style="color: var(--orange);">&#9888; Complex Integration</h4>
+        <p style="font-size: 0.95rem;">Existing solutions require weeks of development, custom blockchain infrastructure, and deep technical expertise just to accept a single cryptocurrency.</p>
+      </div>
+      <div class="card">
+        <h4 style="color: var(--red);">&#36; Exorbitant Fees</h4>
+        <p style="font-size: 0.95rem;">Competitors charge 1% to 3% per transaction. For a business processing $1M monthly, that's $10K-$30K lost to payment processing alone.</p>
+      </div>
+      <div class="card">
+        <h4 style="color: var(--orange);">&#9203; Slow Settlement</h4>
+        <p style="font-size: 0.95rem;">Most processors take 2-7 business days to settle. In crypto, where prices move 5-10% daily, delayed settlement means unpredictable revenue.</p>
+      </div>
+      <div class="card">
+        <h4 style="color: var(--red);">&#128274; Security Concerns</h4>
+        <p style="font-size: 0.95rem;">Managing private keys, handling wallet security, and ensuring compliance is a full-time job. One breach can be catastrophic.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">02 / 20</div>
+</section>
+
+<!-- ========== SLIDE 3: THE SOLUTION ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-cyan" style="top: -150px; right: -150px;"></div>
+  <div class="bg-glow bg-glow-blue" style="bottom: -100px; left: 20%;"></div>
+  <div class="slide-inner" style="text-align: center;">
+    <span class="label">The Solution</span>
+    <h2>One API. Every crypto.<br><span class="gradient-text">Instant settlement.</span></h2>
+    <p style="max-width: 650px; margin: 0 auto 3rem;">
+      MyCryptoCoin is the simplest way for any business to accept cryptocurrency payments. Integrate once, accept 10+ cryptos, and get paid instantly.
+    </p>
+    <div class="grid-4">
+      <div class="stat-box">
+        <div class="value gradient-text">0.5%</div>
+        <div class="label-small">Per transaction</div>
+      </div>
+      <div class="stat-box">
+        <div class="value" style="color: var(--cyan);">10+</div>
+        <div class="label-small">Cryptocurrencies</div>
+      </div>
+      <div class="stat-box">
+        <div class="value" style="color: var(--green);">&lt; 5 min</div>
+        <div class="label-small">Integration time</div>
+      </div>
+      <div class="stat-box">
+        <div class="value" style="color: var(--orange);">Instant</div>
+        <div class="label-small">Settlement</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">03 / 20</div>
+</section>
+
+<!-- ========== SLIDE 4: HOW IT WORKS ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-blue" style="top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+  <div class="slide-inner">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <span class="label">How It Works</span>
+      <h2>Three steps. That's it.</h2>
+    </div>
+    <div class="grid-3">
+      <div class="step" style="position: relative;">
+        <div class="step-number">1</div>
+        <h3>Integrate</h3>
+        <p style="font-size: 0.95rem;">Add our lightweight SDK or use our WordPress plugin. Get your API key and you're ready in under 5 minutes.</p>
+        <div class="step-connector"></div>
+      </div>
+      <div class="step" style="position: relative;">
+        <div class="step-number">2</div>
+        <h3>Customer Pays</h3>
+        <p style="font-size: 0.95rem;">Your customer selects crypto at checkout. They scan a QR code or copy the wallet address. Payment confirms on-chain in seconds.</p>
+        <div class="step-connector"></div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>You Receive</h3>
+        <p style="font-size: 0.95rem;">Funds land in your MyCryptoCoin wallet instantly. Withdraw anytime to your own wallet, or enable auto-withdrawal. We take just 0.5%.</p>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 3rem;">
+      <div style="display: inline-block; padding: 16px 32px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px;">
+        <code style="font-size: 0.9rem; color: var(--cyan);">POST /api/v1/payments/create &nbsp;&rarr;&nbsp; { address, amount, qr_code }</code>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">04 / 20</div>
+</section>
+
+<!-- ========== SLIDE 5: SUPPORTED CRYPTOS ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-purple" style="bottom: -100px; right: -100px;"></div>
+  <div class="slide-inner">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <span class="label">Multi-Currency</span>
+      <h2>10+ Cryptocurrencies Supported</h2>
+      <p>Accept the world's most popular digital currencies through a single integration.</p>
+    </div>
+    <div class="grid-5" style="max-width: 900px; margin: 0 auto;">
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #F7931A;">&#8383;</div>
+        <div class="crypto-name">Bitcoin</div>
+        <div class="crypto-symbol">BTC</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #627EEA;">&#9830;</div>
+        <div class="crypto-name">Ethereum</div>
+        <div class="crypto-symbol">ETH</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #26A17B;">&#36;</div>
+        <div class="crypto-name">Tether</div>
+        <div class="crypto-symbol">USDT</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #2775CA;">&#36;</div>
+        <div class="crypto-name">USD Coin</div>
+        <div class="crypto-symbol">USDC</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #F0B90B; color: #000;">B</div>
+        <div class="crypto-name">BNB</div>
+        <div class="crypto-symbol">BNB</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #E6007A;">&#9679;</div>
+        <div class="crypto-name">Polkadot</div>
+        <div class="crypto-symbol">DOT</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #8247E5;">P</div>
+        <div class="crypto-name">Polygon</div>
+        <div class="crypto-symbol">MATIC</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #00D1FF;">A</div>
+        <div class="crypto-name">Avalanche</div>
+        <div class="crypto-symbol">AVAX</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #DC1FFF;">S</div>
+        <div class="crypto-name">Solana</div>
+        <div class="crypto-symbol">SOL</div>
+      </div>
+      <div class="crypto-badge">
+        <div class="crypto-icon" style="background: #345D9D;">L</div>
+        <div class="crypto-name">Litecoin</div>
+        <div class="crypto-symbol">LTC</div>
+      </div>
+    </div>
+    <p style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: var(--text-muted);">New chains and tokens added quarterly. Custom token support available on request.</p>
+  </div>
+  <div class="slide-number">05 / 20</div>
+</section>
+
+<!-- ========== SLIDE 6: KEY FEATURES ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-blue" style="top: -150px; left: 30%;"></div>
+  <div class="slide-inner">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <span class="label">Features</span>
+      <h2>Everything you need.<br><span class="gradient-text">Nothing you don't.</span></h2>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-icon" style="background: rgba(59,130,246,0.15); color: var(--blue);">&#128176;</div>
+        <h4>Multi-Crypto Support</h4>
+        <p style="font-size: 0.9rem;">Accept 10+ cryptocurrencies through a single integration. One API, every chain.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: rgba(16,185,129,0.15); color: var(--green);">&#9889;</div>
+        <h4>0.5% Flat Fee</h4>
+        <p style="font-size: 0.9rem;">The lowest rate in the industry. No monthly charges, no setup fees, no hidden costs.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: rgba(139,92,246,0.15); color: var(--purple);">&#128260;</div>
+        <h4>Auto-Withdrawals</h4>
+        <p style="font-size: 0.9rem;">Set a threshold and funds automatically transfer to your personal wallet. Set it and forget it.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: rgba(6,182,212,0.15); color: var(--cyan);">&#128276;</div>
+        <h4>Real-Time Notifications</h4>
+        <p style="font-size: 0.9rem;">Webhooks, email alerts, and WhatsApp notifications the moment a payment is confirmed.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: rgba(16,185,129,0.15); color: var(--green);">&#128172;</div>
+        <h4>WhatsApp 2FA</h4>
+        <p style="font-size: 0.9rem;">Industry-first WhatsApp-based verification for withdrawals. Secure and convenient.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: rgba(59,130,246,0.15); color: var(--blue);">&#128187;</div>
+        <h4>Developer API</h4>
+        <p style="font-size: 0.9rem;">RESTful API with comprehensive docs, SDKs, and a WordPress/WooCommerce plugin.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">06 / 20</div>
+</section>
+
+<!-- ========== SLIDE 7: FOR E-COMMERCE ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-cyan" style="top: 50%; right: -200px; transform: translateY(-50%);"></div>
+  <div class="slide-inner">
+    <div class="grid-2" style="align-items: center;">
+      <div>
+        <div class="use-case-tag" style="background: rgba(6,182,212,0.15); color: var(--cyan);">E-Commerce</div>
+        <h2 style="font-size: 2.25rem;">Accept crypto at<br>checkout. <span class="gradient-text">Instantly.</span></h2>
+        <p style="margin-bottom: 2rem;">
+          Whether you sell physical goods, digital products, or subscriptions, MyCryptoCoin drops into your existing checkout flow. Customers choose crypto, scan a QR code, and you get paid.
+        </p>
+        <ul class="feature-list">
+          <li>WooCommerce & WordPress plugin (1-click install)</li>
+          <li>Embeddable payment widget for any website</li>
+          <li>Automatic order confirmation via webhooks</li>
+          <li>Multi-currency pricing display</li>
+          <li>Cart abandonment reduction with fast crypto checkout</li>
+        </ul>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center;">
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 40px; width: 340px; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">ORDER TOTAL</div>
+          <div style="font-size: 2.5rem; font-weight: 800; margin-bottom: 4px;">$249.99</div>
+          <div style="font-size: 0.9rem; color: var(--cyan); margin-bottom: 24px;">&#8776; 0.00385 BTC</div>
+          <div style="background: var(--gradient-primary); padding: 14px; border-radius: 10px; font-weight: 700; font-size: 0.95rem;">Pay with Crypto &#8594;</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 12px;">Powered by MyCryptoCoin</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">07 / 20</div>
+</section>
+
+<!-- ========== SLIDE 8: FOR AIRLINES ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-purple" style="top: -100px; left: -100px;"></div>
+  <div class="slide-inner">
+    <div class="grid-2" style="align-items: center;">
+      <div style="display: flex; align-items: center; justify-content: center;">
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 32px; width: 340px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div><div style="font-size: 0.7rem; color: var(--text-muted);">FROM</div><div style="font-size: 1.5rem; font-weight: 800;">JFK</div></div>
+            <div style="font-size: 1.5rem; color: var(--text-muted);">&#9992;</div>
+            <div style="text-align: right;"><div style="font-size: 0.7rem; color: var(--text-muted);">TO</div><div style="font-size: 1.5rem; font-weight: 800;">LHR</div></div>
+          </div>
+          <div style="border-top: 1px solid var(--card-border); padding-top: 16px;">
+            <div style="font-size: 0.8rem; color: var(--text-muted);">TOTAL</div>
+            <div style="font-size: 1.75rem; font-weight: 800; margin-bottom: 4px;">$1,249.00</div>
+            <div style="font-size: 0.85rem; color: var(--purple);">Pay with ETH, BTC, or USDT</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="use-case-tag" style="background: rgba(139,92,246,0.15); color: var(--purple);">Airlines & Travel</div>
+        <h2 style="font-size: 2.25rem;">Book flights with<br><span class="gradient-text">crypto.</span></h2>
+        <p style="margin-bottom: 2rem;">
+          Airlines can tap into the crypto-native traveler demographic. No chargebacks, instant confirmation, and a seamless booking experience across borders.
+        </p>
+        <ul class="feature-list">
+          <li>High-value transactions perfectly suited for crypto</li>
+          <li>Zero chargeback risk on flight bookings</li>
+          <li>Borderless payments for international travelers</li>
+          <li>Instant booking confirmation on payment receipt</li>
+          <li>Loyalty program integration capability</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">08 / 20</div>
+</section>
+
+<!-- ========== SLIDE 9: FOR REAL ESTATE ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-blue" style="bottom: -100px; right: 20%;"></div>
+  <div class="slide-inner">
+    <div class="grid-2" style="align-items: center;">
+      <div>
+        <div class="use-case-tag" style="background: rgba(16,185,129,0.15); color: var(--green);">Real Estate</div>
+        <h2 style="font-size: 2.25rem;">Close property deals<br>in <span class="gradient-text">crypto.</span></h2>
+        <p style="margin-bottom: 2rem;">
+          Real estate transactions are ideal for crypto: high-value, cross-border, and benefiting from transparent, immutable blockchain records.
+        </p>
+        <ul class="feature-list">
+          <li>Handle transactions from $10K to $10M+</li>
+          <li>Immutable on-chain proof of payment</li>
+          <li>No wire transfer delays or intermediary banks</li>
+          <li>Escrow-compatible payment flows</li>
+          <li>Multi-signature approval for large transactions</li>
+        </ul>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center;">
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 32px; width: 340px;">
+          <div style="font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 12px;">PROPERTY DEPOSIT</div>
+          <div style="font-size: 2.25rem; font-weight: 800; margin-bottom: 4px;">$50,000</div>
+          <div style="font-size: 0.85rem; color: var(--green); margin-bottom: 20px;">&#8776; 0.770 BTC</div>
+          <div style="border-top: 1px solid var(--card-border); padding-top: 16px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px;">
+              <span style="color: var(--text-muted);">Fee (0.5%)</span>
+              <span>$250.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px;">
+              <span style="color: var(--text-muted);">Settlement</span>
+              <span style="color: var(--green);">Instant</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+              <span style="color: var(--text-muted);">On-chain proof</span>
+              <span style="color: var(--green);">&#10003;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">09 / 20</div>
+</section>
+
+<!-- ========== SLIDE 10: FOR FOREX BROKERS ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-purple" style="top: 30%; right: -150px;"></div>
+  <div class="slide-inner">
+    <div class="grid-2" style="align-items: center;">
+      <div style="display: flex; align-items: center; justify-content: center;">
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 32px; width: 340px;">
+          <div style="font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 16px;">TRADING ACCOUNT DEPOSIT</div>
+          <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <div style="flex: 1; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 12px; text-align: center; cursor: pointer;">
+              <div style="font-weight: 700; font-size: 0.85rem;">USDT</div>
+            </div>
+            <div style="flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px; text-align: center;">
+              <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-muted);">BTC</div>
+            </div>
+            <div style="flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px; text-align: center;">
+              <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-muted);">ETH</div>
+            </div>
+          </div>
+          <div style="font-size: 2rem; font-weight: 800; margin-bottom: 16px;">5,000 USDT</div>
+          <div style="background: var(--gradient-primary); padding: 12px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; text-align: center;">Deposit Now</div>
+        </div>
+      </div>
+      <div>
+        <div class="use-case-tag" style="background: rgba(245,158,11,0.15); color: var(--orange);">Forex & Trading</div>
+        <h2 style="font-size: 2.25rem;">Crypto deposits &<br>withdrawals for <span class="gradient-text">brokers.</span></h2>
+        <p style="margin-bottom: 2rem;">
+          Forex and trading platforms need fast, reliable deposit and withdrawal infrastructure. MyCryptoCoin provides instant crypto funding with full audit trails.
+        </p>
+        <ul class="feature-list">
+          <li>Instant deposits credited to trading accounts</li>
+          <li>Automated withdrawal processing</li>
+          <li>Stablecoin support (USDT, USDC) for predictable value</li>
+          <li>Full KYT (Know Your Transaction) compatibility</li>
+          <li>Webhook callbacks for real-time balance updates</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">10 / 20</div>
+</section>
+
+<!-- ========== SLIDE 11: PRICING ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-cyan" style="top: -100px; left: 50%; transform: translateX(-50%);"></div>
+  <div class="slide-inner">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <span class="label">Pricing</span>
+      <h2>Simple. Transparent.<br><span class="gradient-text">0.5% per transaction.</span></h2>
+      <p>No monthly fees. No setup costs. No hidden charges. You only pay when you get paid.</p>
+    </div>
+    <table class="pricing-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>MyCryptoCoin</th>
+          <th>BitPay</th>
+          <th>Coinbase Commerce</th>
+          <th>CoinGate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="highlight">
+          <td>Transaction Fee</td>
+          <td><strong>0.5%</strong></td>
+          <td>1.0%</td>
+          <td>1.0%</td>
+          <td>1.0 - 1.5%</td>
+        </tr>
+        <tr>
+          <td>Monthly Fee</td>
+          <td><strong>$0</strong></td>
+          <td>$0 - $300</td>
+          <td>$0</td>
+          <td>$0</td>
+        </tr>
+        <tr>
+          <td>Setup Fee</td>
+          <td><strong>$0</strong></td>
+          <td>$0</td>
+          <td>$0</td>
+          <td>$0</td>
+        </tr>
+        <tr>
+          <td>Instant Settlement</td>
+          <td><span class="check">&#10003;</span></td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="cross">&#10007;</span></td>
+        </tr>
+        <tr>
+          <td>WhatsApp 2FA</td>
+          <td><span class="check">&#10003;</span></td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="cross">&#10007;</span></td>
+        </tr>
+        <tr>
+          <td>Auto-Withdrawals</td>
+          <td><span class="check">&#10003;</span></td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="cross">&#10007;</span></td>
+          <td><span class="check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>10+ Cryptos</td>
+          <td><span class="check">&#10003;</span></td>
+          <td><span class="check">&#10003;</span></td>
+          <td><span class="check">&#10003;</span></td>
+          <td><span class="check">&#10003;</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="text-align: center; margin-top: 2rem;">
+      <p style="font-size: 0.85rem; color: var(--text-muted);">Competitor data sourced from public pricing pages as of Q1 2026.</p>
+    </div>
+  </div>
+  <div class="slide-number">11 / 20</div>
+</section>
+
+<!-- ========== SLIDE 12: SECURITY ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-purple" style="bottom: -200px; left: -100px;"></div>
+  <div class="slide-inner">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <span class="label">Security</span>
+      <h2>Enterprise-grade security.<br><span class="gradient-text">Built in, not bolted on.</span></h2>
+    </div>
+    <div class="grid-3" style="gap: 20px;">
+      <div class="security-grid-item">
+        <div class="security-icon" style="background: rgba(59,130,246,0.15); color: var(--blue);">&#128273;</div>
+        <div>
+          <h4 style="font-size: 1rem;">HD Wallets</h4>
+          <p style="font-size: 0.85rem;">Hierarchical Deterministic wallets generate unique addresses for every transaction. No address reuse, maximum privacy.</p>
+        </div>
+      </div>
+      <div class="security-grid-item">
+        <div class="security-icon" style="background: rgba(16,185,129,0.15); color: var(--green);">&#128274;</div>
+        <div>
+          <h4 style="font-size: 1rem;">End-to-End Encryption</h4>
+          <p style="font-size: 0.85rem;">All API communication encrypted with TLS 1.3. Sensitive data encrypted at rest with AES-256.</p>
+        </div>
+      </div>
+      <div class="security-grid-item">
+        <div class="security-icon" style="background: rgba(139,92,246,0.15); color: var(--purple);">&#128241;</div>
+        <div>
+          <h4 style="font-size: 1rem;">WhatsApp 2FA</h4>
+          <p style="font-size: 0.85rem;">Withdrawal verification via WhatsApp. No SMS spoofing risk. Confirm every withdrawal from your phone.</p>
+        </div>
+      </div>
+      <div class="security-grid-item">
+        <div class="security-icon" style="background: rgba(6,182,212,0.15); color: var(--cyan);">&#128196;</div>
+        <div>
+          <h4 style="font-size: 1rem;">HMAC Webhooks</h4>
+          <p style="font-size: 0.85rem;">Every webhook payload signed with HMAC-SHA256. Verify authenticity and prevent replay attacks.</p>
+        </div>
+      </div>
+      <div class="security-grid-item">
+        <div class="security-icon" style="background: rgba(245,158,11,0.15); color: var(--orange);">&#128209;</div>
+        <div>
+          <h4 style="font-size: 1rem;">Audit Logs</h4>
+          <p style="font-size: 0.85rem;">Every action logged with timestamps, IP addresses, and user agents. Full accountability and compliance readiness.</p>
+        </div>
+      </div>
+      <div class="security-grid-item">
+        <div class="security-icon" style="background: rgba(239,68,68,0.15); color: var(--red);">&#128737;</div>
+        <div>
+          <h4 style="font-size: 1rem;">Rate Limiting & IP Whitelisting</h4>
+          <p style="font-size: 0.85rem;">API rate limiting with configurable IP allowlists. Restrict access to known servers only.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">12 / 20</div>
+</section>
+
+<!-- ========== SLIDE 13: DEVELOPER EXPERIENCE ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-cyan" style="top: 50%; left: -150px; transform: translateY(-50%);"></div>
+  <div class="slide-inner">
+    <div class="grid-2" style="align-items: center;">
+      <div>
+        <span class="label">Developer Experience</span>
+        <h2 style="font-size: 2.25rem;">Built by developers,<br><span class="gradient-text">for developers.</span></h2>
+        <p style="margin-bottom: 2rem;">
+          Our API-first approach means you can integrate crypto payments in minutes, not weeks. Clean endpoints, clear docs, and SDKs in popular languages.
+        </p>
+        <ul class="feature-list">
+          <li>RESTful API with full OpenAPI spec</li>
+          <li>SDKs for Node.js, Python, PHP, Ruby, Go</li>
+          <li>WordPress / WooCommerce plugin</li>
+          <li>Sandbox environment for testing</li>
+          <li>Comprehensive webhook system</li>
+          <li>Detailed API documentation with examples</li>
+        </ul>
+      </div>
+      <div>
+        <div style="background: #0d1117; border: 1px solid #21262d; border-radius: 16px; padding: 28px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.8rem; line-height: 1.8; overflow-x: auto;">
+          <div style="color: #8b949e;">// Create a payment in 3 lines</div>
+          <div><span style="color: #ff7b72;">const</span> <span style="color: #c9d1d9;">mcc</span> = <span style="color: #d2a8ff;">require</span>(<span style="color: #a5d6ff;">'mycryptocoin'</span>);</div>
+          <br>
+          <div><span style="color: #ff7b72;">const</span> <span style="color: #c9d1d9;">payment</span> = <span style="color: #ff7b72;">await</span> <span style="color: #c9d1d9;">mcc</span>.<span style="color: #d2a8ff;">payments</span>.<span style="color: #d2a8ff;">create</span>({</div>
+          <div>&nbsp;&nbsp;<span style="color: #c9d1d9;">amount</span>: <span style="color: #a5d6ff;">49.99</span>,</div>
+          <div>&nbsp;&nbsp;<span style="color: #c9d1d9;">currency</span>: <span style="color: #a5d6ff;">'USD'</span>,</div>
+          <div>&nbsp;&nbsp;<span style="color: #c9d1d9;">crypto</span>: <span style="color: #a5d6ff;">'BTC'</span>,</div>
+          <div>&nbsp;&nbsp;<span style="color: #c9d1d9;">webhook_url</span>: <span style="color: #a5d6ff;">'https://...'</span></div>
+          <div>});</div>
+          <br>
+          <div style="color: #8b949e;">// payment.address</div>
+          <div style="color: #8b949e;">// payment.amount_crypto</div>
+          <div style="color: #8b949e;">// payment.qr_code_url</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">13 / 20</div>
+</section>
+
+<!-- ========== SLIDE 14: DASHBOARD PREVIEW ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-blue" style="top: -100px; right: -100px;"></div>
+  <div class="slide-inner">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <span class="label">Merchant Dashboard</span>
+      <h2>Full visibility.<br><span class="gradient-text">Complete control.</span></h2>
+      <p>A powerful, intuitive dashboard to manage every aspect of your crypto payments.</p>
+    </div>
+    <div class="grid-3">
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">&#128200;</div>
+        <h4>Real-Time Analytics</h4>
+        <p style="font-size: 0.85rem;">Live transaction volume, revenue trends, conversion rates, and per-crypto breakdowns at a glance.</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">&#128179;</div>
+        <h4>Transaction History</h4>
+        <p style="font-size: 0.85rem;">Search, filter, and export every transaction. View on-chain details, confirmation status, and fee breakdowns.</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">&#128176;</div>
+        <h4>Wallet Management</h4>
+        <p style="font-size: 0.85rem;">View balances per crypto, initiate withdrawals, set auto-withdrawal rules, and manage destination addresses.</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">&#128272;</div>
+        <h4>API Key Management</h4>
+        <p style="font-size: 0.85rem;">Generate, rotate, and revoke API keys. Set permissions and IP restrictions per key.</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">&#128101;</div>
+        <h4>Team Access</h4>
+        <p style="font-size: 0.85rem;">Invite team members with role-based access. Admin, finance, and developer roles with granular permissions.</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">&#128230;</div>
+        <h4>Webhook Logs</h4>
+        <p style="font-size: 0.85rem;">Monitor webhook delivery, inspect payloads, check response codes, and retry failed deliveries.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">14 / 20</div>
+</section>
+
+<!-- ========== SLIDE 15: WHATSAPP INTEGRATION ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-blue" style="bottom: -150px; left: 30%;"></div>
+  <div class="slide-inner">
+    <div class="grid-2" style="align-items: center;">
+      <div style="display: flex; align-items: center; justify-content: center;">
+        <div style="width: 320px;">
+          <!-- WhatsApp Chat Mockup -->
+          <div style="background: #075e54; border-radius: 16px 16px 0 0; padding: 16px 20px; display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800;">MC</div>
+            <div>
+              <div style="font-size: 0.9rem; font-weight: 700;">MyCryptoCoin</div>
+              <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6);">Verified Business</div>
+            </div>
+          </div>
+          <div style="background: #0b141a; padding: 20px; border-radius: 0 0 16px 16px;">
+            <div style="background: #1f2c34; padding: 12px 16px; border-radius: 0 12px 12px 12px; margin-bottom: 12px; max-width: 85%;">
+              <div style="font-size: 0.8rem; line-height: 1.5;">&#128276; <strong>Payment Received!</strong><br><br>Amount: 0.0154 ETH ($49.99)<br>From: 0x7a3...f29<br>Status: Confirmed &#10003;&#10003;</div>
+              <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); text-align: right; margin-top: 4px;">10:32 AM</div>
+            </div>
+            <div style="background: #1f2c34; padding: 12px 16px; border-radius: 0 12px 12px 12px; margin-bottom: 12px; max-width: 85%;">
+              <div style="font-size: 0.8rem; line-height: 1.5;">&#128274; <strong>Withdrawal Request</strong><br><br>Amount: 1.5 ETH to 0x9b2...c41<br><br>Reply <strong>CONFIRM</strong> to approve or <strong>DENY</strong> to cancel.</div>
+              <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); text-align: right; margin-top: 4px;">10:45 AM</div>
+            </div>
+            <div style="background: #005c4b; padding: 12px 16px; border-radius: 12px 0 12px 12px; margin-left: auto; max-width: 50%; text-align: right;">
+              <div style="font-size: 0.8rem;">CONFIRM</div>
+              <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 4px;">10:45 AM &#10003;&#10003;</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <span class="label">WhatsApp Integration</span>
+        <h2 style="font-size: 2.25rem;">Your payments,<br>in your <span class="gradient-text">pocket.</span></h2>
+        <p style="margin-bottom: 2rem;">
+          WhatsApp is the world's most used messaging app. We put your payment notifications and security verifications right where you already are.
+        </p>
+        <ul class="feature-list">
+          <li>Instant payment notifications via WhatsApp</li>
+          <li>Withdrawal verification (2FA) through WhatsApp</li>
+          <li>Daily summary reports delivered to your chat</li>
+          <li>Verified Business account for trust</li>
+          <li>Works globally, no app installation needed</li>
+          <li>Reply-based confirmation for withdrawals</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">15 / 20</div>
+</section>
+
+<!-- ========== SLIDE 16: GLOBAL REACH ========== -->
+<section class="slide" style="text-align: center;">
+  <div class="bg-glow bg-glow-purple" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; height: 600px; opacity: 0.1;"></div>
+  <div class="slide-inner">
+    <span class="label">Global Reach</span>
+    <h2>No borders. No limits.<br><span class="gradient-text">Truly global.</span></h2>
+    <p style="max-width: 650px; margin: 0 auto 3rem;">
+      Cryptocurrency is borderless by nature. MyCryptoCoin lets businesses accept payments from any customer, in any country, in any supported crypto &mdash; without the complexity of international banking.
+    </p>
+    <div class="grid-4" style="max-width: 800px; margin: 0 auto;">
+      <div class="card" style="text-align: center; padding: 24px;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">&#127758;</div>
+        <h4 style="font-size: 0.95rem;">195+ Countries</h4>
+        <p style="font-size: 0.8rem;">Available everywhere crypto is legal</p>
+      </div>
+      <div class="card" style="text-align: center; padding: 24px;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">&#128178;</div>
+        <h4 style="font-size: 0.95rem;">Multi-Currency</h4>
+        <p style="font-size: 0.8rem;">Price in USD, EUR, GBP, or 50+ fiat currencies</p>
+      </div>
+      <div class="card" style="text-align: center; padding: 24px;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">&#9201;</div>
+        <h4 style="font-size: 0.95rem;">24/7 Operation</h4>
+        <p style="font-size: 0.8rem;">Crypto never sleeps. Neither do we.</p>
+      </div>
+      <div class="card" style="text-align: center; padding: 24px;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">&#127981;</div>
+        <h4 style="font-size: 0.95rem;">No Intermediaries</h4>
+        <p style="font-size: 0.8rem;">Direct on-chain settlement, no middlemen</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">16 / 20</div>
+</section>
+
+<!-- ========== SLIDE 17: ROADMAP ========== -->
+<section class="slide">
+  <div class="bg-glow bg-glow-cyan" style="top: -150px; right: -100px;"></div>
+  <div class="slide-inner">
+    <div class="grid-2" style="align-items: start;">
+      <div>
+        <span class="label">Roadmap</span>
+        <h2 style="font-size: 2.25rem;">Where we're<br><span class="gradient-text">headed.</span></h2>
+        <p>
+          MyCryptoCoin is just getting started. Our roadmap is designed to make crypto payments as ubiquitous and easy as card payments.
+        </p>
+      </div>
+      <div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div>
+            <div class="timeline-date">Q2 2026</div>
+            <h4>Shopify Plugin</h4>
+            <p style="font-size: 0.85rem;">Native Shopify integration for one-click crypto payment setup on the world's largest e-commerce platform.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div>
+            <div class="timeline-date">Q3 2026</div>
+            <h4>Mobile App</h4>
+            <p style="font-size: 0.85rem;">iOS and Android merchant app for on-the-go payment monitoring, withdrawals, and push notifications.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div>
+            <div class="timeline-date">Q4 2026</div>
+            <h4>Fiat Off-Ramp</h4>
+            <p style="font-size: 0.85rem;">Auto-convert crypto to fiat and settle directly to your bank account. Accept crypto, receive dollars.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div>
+            <div class="timeline-date">2027</div>
+            <h4>Lending & Card Issuing</h4>
+            <p style="font-size: 0.85rem;">Merchant lending against crypto reserves. Virtual and physical debit cards funded by your MyCryptoCoin balance.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">17 / 20</div>
+</section>
+
+<!-- ========== SLIDE 18: WHY MYCRYPTOCOIN ========== -->
+<section class="slide" style="text-align: center;">
+  <div class="bg-glow bg-glow-blue" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 700px; height: 700px; opacity: 0.08;"></div>
+  <div class="slide-inner">
+    <span class="label">Why Us</span>
+    <h2>Why My<span class="gradient-text">Crypto</span>Coin?</h2>
+    <p style="max-width: 600px; margin: 0 auto 3rem;">
+      We built the payment processor we wished existed. Here's what makes us different:
+    </p>
+    <div class="grid-3" style="max-width: 900px; margin: 0 auto;">
+      <div class="card" style="text-align: center; padding: 28px;">
+        <div style="font-size: 2.5rem; font-weight: 800; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">50%</div>
+        <h4>Lower Fees</h4>
+        <p style="font-size: 0.85rem;">Our 0.5% fee is half of what most competitors charge. More revenue stays with you.</p>
+      </div>
+      <div class="card" style="text-align: center; padding: 28px;">
+        <div style="font-size: 2.5rem; font-weight: 800; color: var(--cyan); margin-bottom: 8px;">5 min</div>
+        <h4>Integration</h4>
+        <p style="font-size: 0.85rem;">From signup to accepting payments in under 5 minutes. No bureaucracy, no waiting.</p>
+      </div>
+      <div class="card" style="text-align: center; padding: 28px;">
+        <div style="font-size: 2.5rem; font-weight: 800; color: var(--green); margin-bottom: 8px;">0 sec</div>
+        <h4>Settlement</h4>
+        <p style="font-size: 0.85rem;">Instant settlement to your wallet. No holding periods, no delays, no excuses.</p>
+      </div>
+      <div class="card" style="text-align: center; padding: 28px;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">&#128172;</div>
+        <h4>WhatsApp-First</h4>
+        <p style="font-size: 0.85rem;">Industry-first WhatsApp integration for security and notifications. Meet merchants where they are.</p>
+      </div>
+      <div class="card" style="text-align: center; padding: 28px;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">&#128187;</div>
+        <h4>API-First</h4>
+        <p style="font-size: 0.85rem;">Built for developers. Clean REST API, comprehensive SDKs, and a WordPress plugin.</p>
+      </div>
+      <div class="card" style="text-align: center; padding: 28px;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">&#128274;</div>
+        <h4>Enterprise Security</h4>
+        <p style="font-size: 0.85rem;">HD wallets, E2E encryption, HMAC webhooks, 2FA, and full audit logging as standard.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">18 / 20</div>
+</section>
+
+<!-- ========== SLIDE 19: GET STARTED ========== -->
+<section class="slide" style="text-align: center;">
+  <div class="bg-glow bg-glow-blue" style="top: -100px; left: 20%;"></div>
+  <div class="bg-glow bg-glow-purple" style="bottom: -100px; right: 20%;"></div>
+  <div class="slide-inner" style="display: flex; flex-direction: column; align-items: center;">
+    <span class="label">Get Started</span>
+    <h2 style="font-size: 3rem;">Start accepting crypto<br>in <span class="gradient-text">5 minutes.</span></h2>
+    <p style="max-width: 550px; margin-bottom: 2.5rem;">
+      No paperwork. No waiting for approval. Sign up, verify your WhatsApp, get your API key, and start processing payments today.
+    </p>
+    <div class="grid-3" style="max-width: 700px; margin-bottom: 2.5rem;">
+      <div style="text-align: center;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-weight: 800; margin: 0 auto 12px;">1</div>
+        <p style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">Create Account</p>
+        <p style="font-size: 0.8rem;">30 seconds</p>
+      </div>
+      <div style="text-align: center;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-weight: 800; margin: 0 auto 12px;">2</div>
+        <p style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">Verify WhatsApp</p>
+        <p style="font-size: 0.8rem;">30 seconds</p>
+      </div>
+      <div style="text-align: center;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-weight: 800; margin: 0 auto 12px;">3</div>
+        <p style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">Integrate & Earn</p>
+        <p style="font-size: 0.8rem;">4 minutes</p>
+      </div>
+    </div>
+    <a href="https://mycrypto.co.in" class="cta-button">
+      Get Started Free &nbsp;&#8594;
+    </a>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">No credit card required. No monthly fees. Ever.</p>
+  </div>
+  <div class="slide-number">19 / 20</div>
+</section>
+
+<!-- ========== SLIDE 20: CONTACT ========== -->
+<section class="slide" style="text-align: center;">
+  <div class="bg-glow bg-glow-purple" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; height: 500px; opacity: 0.1;"></div>
+  <div class="slide-inner" style="display: flex; flex-direction: column; align-items: center;">
+    <h1 style="font-size: 3.5rem; margin-bottom: 0.5rem;">
+      My<span class="gradient-text">Crypto</span>Coin
+    </h1>
+    <p style="font-size: 1.25rem; color: var(--text-secondary); margin-bottom: 3rem;">The Stripe of Crypto Payments</p>
+
+    <div class="contact-row" style="justify-content: center;">
+      <div class="contact-item">
+        <div class="contact-icon">&#127760;</div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">WEBSITE</div>
+          <div style="color: var(--cyan);">mycrypto.co.in</div>
+        </div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-icon">&#9993;</div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">EMAIL</div>
+          <div style="color: var(--cyan);">hello@mycrypto.co.in</div>
+        </div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-icon">&#128172;</div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">WHATSAPP</div>
+          <div style="color: var(--cyan);">+1 (800) MCC-PAY1</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 3rem; display: flex; gap: 20px;">
+      <a href="https://mycrypto.co.in" class="cta-button" style="padding: 14px 32px; font-size: 1rem;">Visit Website</a>
+      <a href="mailto:hello@mycrypto.co.in" class="cta-button" style="padding: 14px 32px; font-size: 1rem; background: var(--card-bg); border: 1px solid var(--card-border);">Contact Us</a>
+    </div>
+
+    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 3rem; max-width: 500px;">
+      &copy; 2026 MyCryptoCoin. All rights reserved. This deck is confidential and intended for the recipient only.
+    </p>
+  </div>
+  <div class="slide-number">20 / 20</div>
+</section>
+
+</body>
+</html>

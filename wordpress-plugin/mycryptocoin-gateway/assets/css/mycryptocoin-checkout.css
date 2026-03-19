@@ -1,0 +1,345 @@
+/**
+ * MyCryptoCoin Gateway — Checkout Styles
+ *
+ * @package MyCryptoCoin_Gateway
+ */
+
+/* ========================================================================
+   Payment Fields Container
+   ======================================================================== */
+
+.mycryptocoin-payment-fields {
+	padding: 8px 0;
+}
+
+.mycryptocoin-select-label {
+	font-size: 14px;
+	font-weight: 600;
+	color: #1a1a2e;
+	margin-bottom: 12px;
+}
+
+.mycryptocoin-error {
+	color: #dc3545;
+	font-size: 13px;
+}
+
+/* ========================================================================
+   Crypto Selection Grid
+   ======================================================================== */
+
+.mycryptocoin-crypto-options {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.mycryptocoin-crypto-option {
+	display: block;
+	cursor: pointer;
+	margin: 0;
+}
+
+.mycryptocoin-crypto-option input[type="radio"] {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.mycryptocoin-crypto-option__inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	padding: 14px 10px;
+	border: 2px solid #e2e8f0;
+	border-radius: 10px;
+	background: #fff;
+	transition: all 0.2s ease;
+	text-align: center;
+}
+
+.mycryptocoin-crypto-option input[type="radio"]:checked + .mycryptocoin-crypto-option__inner {
+	border-color: #6c5ce7;
+	background: #f8f7ff;
+	box-shadow: 0 0 0 1px #6c5ce7;
+}
+
+.mycryptocoin-crypto-option:hover .mycryptocoin-crypto-option__inner {
+	border-color: #a29bfe;
+	background: #fafafe;
+}
+
+.mycryptocoin-crypto-option input[type="radio"]:focus + .mycryptocoin-crypto-option__inner {
+	outline: 2px solid #6c5ce7;
+	outline-offset: 2px;
+}
+
+.mycryptocoin-crypto-option__icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	font-size: 11px;
+	font-weight: 700;
+	color: #fff;
+	letter-spacing: -0.3px;
+}
+
+/* Crypto icon background colors */
+.mycryptocoin-icon-bitcoin    { background: #f7931a; }
+.mycryptocoin-icon-ethereum   { background: #627eea; }
+.mycryptocoin-icon-tether     { background: #26a17b; }
+.mycryptocoin-icon-usd-coin   { background: #2775ca; }
+.mycryptocoin-icon-bnb        { background: #f3ba2f; }
+.mycryptocoin-icon-solana     { background: linear-gradient(135deg, #9945ff, #14f195); }
+.mycryptocoin-icon-xrp        { background: #23292f; }
+.mycryptocoin-icon-cardano    { background: #0033ad; }
+.mycryptocoin-icon-dogecoin   { background: #c2a633; }
+.mycryptocoin-icon-polygon    { background: #8247e5; }
+.mycryptocoin-icon-litecoin   { background: #345d9d; }
+.mycryptocoin-icon-tron       { background: #ef0027; }
+.mycryptocoin-icon-avalanche  { background: #e84142; }
+
+.mycryptocoin-crypto-option__name {
+	font-size: 12px;
+	font-weight: 500;
+	color: #4a5568;
+	line-height: 1.2;
+}
+
+.mycryptocoin-crypto-option input[type="radio"]:checked + .mycryptocoin-crypto-option__inner .mycryptocoin-crypto-option__name {
+	color: #6c5ce7;
+	font-weight: 600;
+}
+
+/* ========================================================================
+   Payment Page (Template)
+   ======================================================================== */
+
+.mycryptocoin-payment-page {
+	max-width: 520px;
+	margin: 40px auto;
+	padding: 32px;
+	background: #fff;
+	border-radius: 16px;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+	text-align: center;
+}
+
+.mycryptocoin-payment-page__header {
+	margin-bottom: 24px;
+}
+
+.mycryptocoin-payment-page__header h2 {
+	font-size: 22px;
+	font-weight: 700;
+	color: #1a1a2e;
+	margin: 0 0 8px;
+}
+
+.mycryptocoin-payment-page__amount {
+	font-size: 32px;
+	font-weight: 800;
+	color: #6c5ce7;
+	margin: 16px 0;
+}
+
+.mycryptocoin-payment-page__amount small {
+	font-size: 14px;
+	font-weight: 500;
+	color: #718096;
+	display: block;
+	margin-top: 4px;
+}
+
+/* QR Code */
+.mycryptocoin-qr-container {
+	display: inline-block;
+	padding: 16px;
+	background: #fff;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+	margin: 20px 0;
+}
+
+.mycryptocoin-qr-container img,
+.mycryptocoin-qr-container canvas {
+	display: block;
+	width: 200px;
+	height: 200px;
+}
+
+/* Payment Address */
+.mycryptocoin-address {
+	margin: 16px 0;
+}
+
+.mycryptocoin-address__label {
+	font-size: 12px;
+	font-weight: 600;
+	color: #718096;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 8px;
+}
+
+.mycryptocoin-address__value {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 10px 16px;
+	background: #f7f8fa;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+}
+
+.mycryptocoin-address__value code {
+	font-size: 13px;
+	color: #2d3748;
+	word-break: break-all;
+	background: transparent;
+	padding: 0;
+}
+
+.mycryptocoin-address__copy {
+	flex-shrink: 0;
+	padding: 4px 12px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #6c5ce7;
+	background: #f0edff;
+	border: 1px solid #d4cffc;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.mycryptocoin-address__copy:hover {
+	background: #6c5ce7;
+	color: #fff;
+}
+
+/* Timer */
+.mycryptocoin-timer {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 16px;
+	background: #fff8e5;
+	border: 1px solid #f0d98c;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #7c5e10;
+	margin: 16px 0;
+}
+
+.mycryptocoin-timer.urgent {
+	background: #fff5f5;
+	border-color: #feb2b2;
+	color: #c53030;
+	animation: mycryptocoin-pulse 1s ease-in-out infinite;
+}
+
+.mycryptocoin-timer.expired {
+	background: #fef2f2;
+	border-color: #fca5a5;
+	color: #991b1b;
+	animation: none;
+}
+
+@keyframes mycryptocoin-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.7; }
+}
+
+.mycryptocoin-timer__icon {
+	font-size: 18px;
+}
+
+/* Status */
+.mycryptocoin-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 20px;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	margin: 16px 0;
+}
+
+.mycryptocoin-status--pending {
+	background: #fff8e5;
+	color: #7c5e10;
+}
+
+.mycryptocoin-status--confirming {
+	background: #eff6ff;
+	color: #1e40af;
+}
+
+.mycryptocoin-status--confirmed {
+	background: #f0fdf4;
+	color: #166534;
+}
+
+.mycryptocoin-status--failed {
+	background: #fef2f2;
+	color: #991b1b;
+}
+
+.mycryptocoin-status--expired {
+	background: #f3f4f6;
+	color: #6b7280;
+}
+
+.mycryptocoin-spinner {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 2px solid currentColor;
+	border-right-color: transparent;
+	border-radius: 50%;
+	animation: mycryptocoin-spin 0.75s linear infinite;
+}
+
+@keyframes mycryptocoin-spin {
+	to { transform: rotate(360deg); }
+}
+
+/* ========================================================================
+   Responsive
+   ======================================================================== */
+
+@media screen and (max-width: 600px) {
+	.mycryptocoin-crypto-options {
+		grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+		gap: 8px;
+	}
+
+	.mycryptocoin-crypto-option__inner {
+		padding: 10px 8px;
+	}
+
+	.mycryptocoin-crypto-option__icon {
+		width: 32px;
+		height: 32px;
+		font-size: 10px;
+	}
+
+	.mycryptocoin-payment-page {
+		margin: 20px 12px;
+		padding: 20px;
+	}
+
+	.mycryptocoin-payment-page__amount {
+		font-size: 24px;
+	}
+}

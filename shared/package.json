@@ -1,0 +1,17 @@
+{
+  "name": "@mycryptocoin/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared types, constants, and utilities for MyCryptoCoin",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
