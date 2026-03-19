@@ -23,6 +23,7 @@ export class EmailService {
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
+      requireTLS: env.SMTP_PORT !== 465, // Enforce STARTTLS for port 587
       auth: {
         user: env.SMTP_USER,
         pass: env.SMTP_PASS,
@@ -30,6 +31,9 @@ export class EmailService {
       pool: true,
       maxConnections: 5,
       maxMessages: 100,
+      tls: {
+        rejectUnauthorized: env.NODE_ENV === 'production',
+      },
     });
   }
 
@@ -107,22 +111,22 @@ export class EmailService {
   ): Promise<void> {
     await this.send({
       to,
-      subject: `Payment Receipt — ${paymentData.paymentId}`,
+      subject: `Payment Receipt — ${escapeHtml(paymentData.paymentId)}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a2e;">Payment Receipt</h1>
           <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Payment ID</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee;">${paymentData.paymentId}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(paymentData.paymentId)}</td>
             </tr>
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Amount</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee;">${paymentData.amount} ${paymentData.crypto}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(paymentData.amount)} ${escapeHtml(paymentData.crypto)}</td>
             </tr>
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Status</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee;">${paymentData.status}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(paymentData.status)}</td>
             </tr>
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Date</td>
@@ -131,7 +135,7 @@ export class EmailService {
             ${paymentData.txHash ? `
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Transaction Hash</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee; word-break: break-all;">${paymentData.txHash}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee; word-break: break-all;">${escapeHtml(paymentData.txHash)}</td>
             </tr>
             ` : ''}
           </table>
@@ -154,7 +158,7 @@ export class EmailService {
   ): Promise<void> {
     await this.send({
       to,
-      subject: `Withdrawal Confirmed — ${withdrawalData.amount} ${withdrawalData.crypto}`,
+      subject: `Withdrawal Confirmed — ${escapeHtml(withdrawalData.amount)} ${escapeHtml(withdrawalData.crypto)}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a2e;">Withdrawal Confirmed</h1>
@@ -162,19 +166,19 @@ export class EmailService {
           <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Amount</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee;">${withdrawalData.amount} ${withdrawalData.crypto}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(withdrawalData.amount)} ${escapeHtml(withdrawalData.crypto)}</td>
             </tr>
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Network Fee</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee;">${withdrawalData.fee} ${withdrawalData.crypto}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(withdrawalData.fee)} ${escapeHtml(withdrawalData.crypto)}</td>
             </tr>
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">To Address</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee; word-break: break-all;">${withdrawalData.address}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee; word-break: break-all;">${escapeHtml(withdrawalData.address)}</td>
             </tr>
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Transaction Hash</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee; word-break: break-all;">${withdrawalData.txHash}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee; word-break: break-all;">${escapeHtml(withdrawalData.txHash)}</td>
             </tr>
           </table>
         </div>

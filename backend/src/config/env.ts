@@ -40,6 +40,14 @@ const envSchema = z.object({
   LTC_RPC_URL: z.string().default('https://ltc.bitaps.com'),
   DOGE_RPC_URL: z.string().default('https://dogechain.info/api/v1'),
   XRP_RPC_URL: z.string().default('https://s1.ripple.com:51234'),
+  AVAX_RPC_URL: z.string().default('https://api.avax.network/ext/bc/C/rpc'),
+  ARB_RPC_URL: z.string().default('https://arb1.arbitrum.io/rpc'),
+  OP_RPC_URL: z.string().default('https://mainnet.optimism.io'),
+  BASE_RPC_URL: z.string().default('https://mainnet.base.org'),
+
+  // Lightning Network (LND REST API)
+  LND_REST_URL: z.string().default('https://localhost:8080'),
+  LND_MACAROON: z.string().default(''),
 
   // HD Wallet master seed — MUST be set explicitly, never use a default.
   // SECURITY: A default seed would allow anyone to derive all wallet keys.

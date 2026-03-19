@@ -103,6 +103,21 @@ export async function authenticateApiKey(
       throw new ForbiddenError('Merchant account is deactivated');
     }
 
+    // SECURITY: Enforce IP whitelist if configured on the API key.
+    // An empty whitelist means all IPs are allowed.
+    if (apiKey.ipWhitelist && Array.isArray(apiKey.ipWhitelist) && apiKey.ipWhitelist.length > 0) {
+      const requestIp = req.ip || req.socket.remoteAddress || '';
+      const normalizedIp = requestIp.replace(/^::ffff:/, ''); // Handle IPv4-mapped IPv6
+      if (!apiKey.ipWhitelist.includes(normalizedIp)) {
+        logger.warn('API key used from non-whitelisted IP', {
+          apiKeyId: apiKey.id,
+          requestIp: normalizedIp,
+          whitelist: apiKey.ipWhitelist,
+        });
+        throw new ForbiddenError('Request IP is not in the API key whitelist');
+      }
+    }
+
     // Update last used timestamp
     await prisma.apiKey.update({
       where: { id: apiKey.id },
@@ -113,6 +128,7 @@ export async function authenticateApiKey(
       id: apiKey.id,
       merchantId: apiKey.merchantId,
       mode: apiKeyRaw.startsWith('mcc_live_') ? 'live' : 'test',
+      permissions: apiKey.permissions as string[] || [],
     };
 
     req.merchant = {

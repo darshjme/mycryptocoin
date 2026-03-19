@@ -113,10 +113,13 @@ deploy() {
   pre_deploy_checks
   pre_deploy_backup
 
-  # Save current image tag for potential rollback
+  # Save current image digest for potential rollback
   local current_image
-  current_image=$(docker compose -f "$COMPOSE_FILE" images backend --format json 2>/dev/null | head -1 || echo "unknown")
-  echo "$current_image" > "${APP_DIR}/.last-deployed-image"
+  current_image=$(docker compose -f "$COMPOSE_FILE" images backend --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | head -1 || echo "")
+  if [ -n "$current_image" ] && [ "$current_image" != ":" ]; then
+    echo "$current_image" > "${APP_DIR}/.last-deployed-image"
+    log "Saved rollback image: ${current_image}"
+  fi
 
   # Pull latest images
   log "Pulling latest images..."

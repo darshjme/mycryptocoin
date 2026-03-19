@@ -349,12 +349,20 @@ class MyCryptoCoin_Gateway extends WC_Payment_Gateway {
 	 * @return bool
 	 */
 	public function validate_fields() {
-		if ( empty( $_POST['mycryptocoin_nonce'] ) || ! wp_verify_nonce(
-			sanitize_text_field( wp_unslash( $_POST['mycryptocoin_nonce'] ) ),
-			'mycryptocoin_process_payment'
-		) ) {
-			wc_add_notice( __( 'Security verification failed. Please try again.', 'mycryptocoin-gateway' ), 'error' );
-			return false;
+		// WooCommerce Blocks checkout does not submit a traditional form, so the
+		// nonce field is absent. Blocks requests are already authenticated by the
+		// Store API nonce. Only enforce our custom nonce for the classic checkout.
+		$is_blocks_checkout = ! empty( $_POST['mycryptocoin_crypto'] ) && empty( $_POST['mycryptocoin_nonce'] )
+			&& did_action( 'woocommerce_store_api_checkout_update_order_from_request' );
+
+		if ( ! $is_blocks_checkout ) {
+			if ( empty( $_POST['mycryptocoin_nonce'] ) || ! wp_verify_nonce(
+				sanitize_text_field( wp_unslash( $_POST['mycryptocoin_nonce'] ) ),
+				'mycryptocoin_process_payment'
+			) ) {
+				wc_add_notice( __( 'Security verification failed. Please try again.', 'mycryptocoin-gateway' ), 'error' );
+				return false;
+			}
 		}
 
 		if ( empty( $_POST['mycryptocoin_crypto'] ) ) {

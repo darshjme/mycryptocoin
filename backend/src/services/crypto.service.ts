@@ -688,6 +688,29 @@ export class CryptoService {
     // Convert hex address to base58check for API calls
     const fromAddressBase58 = this.tronHexToBase58(fromAddressHex);
 
+    // Pre-flight: verify sender has enough TRX for energy/bandwidth
+    // A TRC-20 transfer typically costs ~13 TRX without staked energy
+    const MIN_TRX_FOR_ENERGY = new Decimal('15'); // 15 TRX safety margin
+    try {
+      const trxBalanceRes = await fetch(
+        `${env.TRON_RPC_URL}/v1/accounts/${fromAddressBase58}`,
+      );
+      const trxAccountData = await trxBalanceRes.json() as any;
+      const trxBalance = fromSmallestUnit(
+        BigInt(trxAccountData.data?.[0]?.balance || 0), 6,
+      );
+      if (trxBalance.lt(MIN_TRX_FOR_ENERGY)) {
+        throw new CryptoError(
+          `Insufficient TRX for energy: have ${trxBalance} TRX, need at least ${MIN_TRX_FOR_ENERGY} TRX. ` +
+          `Top up the hot wallet (${fromAddressBase58}) with TRX before sending TRC-20 transfers.`,
+        );
+      }
+    } catch (error) {
+      if (error instanceof CryptoError) throw error;
+      logger.warn('Could not verify TRX balance for energy pre-flight check', { error });
+      // Continue anyway — the transaction will fail on-chain if insufficient
+    }
+
     // Convert destination address to hex (strip T prefix, decode base58check)
     const toAddressHex = this.tronBase58ToHex(params.toAddress);
 
@@ -964,6 +987,166 @@ export class CryptoService {
       return fromSmallestUnit(BigInt(data.result.account_data.Balance), 6);
     }
     return new Decimal('0');
+  }
+  // ─── Custom ERC-20/BEP-20/TRC-20 Token Support ──
+
+  /**
+   * Validate a custom token contract address and fetch its info.
+   * Supports ERC-20, BEP-20, and any EVM-compatible token.
+   */
+  async validateCustomToken(
+    contractAddress: string,
+    networkType: 'ethereum' | 'bsc' | 'polygon' | 'arbitrum' | 'optimism' | 'base' | 'avalanche',
+  ): Promise<{
+    valid: boolean;
+    name?: string;
+    symbol?: string;
+    decimals?: number;
+    totalSupply?: string;
+  }> {
+    try {
+      let provider: ethers.JsonRpcProvider;
+      switch (networkType) {
+        case 'bsc':
+          provider = this.bscProvider;
+          break;
+        case 'polygon':
+          provider = this.maticProvider;
+          break;
+        case 'arbitrum':
+          provider = new ethers.JsonRpcProvider(env.ARB_RPC_URL);
+          break;
+        case 'optimism':
+          provider = new ethers.JsonRpcProvider(env.OP_RPC_URL);
+          break;
+        case 'base':
+          provider = new ethers.JsonRpcProvider(env.BASE_RPC_URL);
+          break;
+        case 'avalanche':
+          provider = new ethers.JsonRpcProvider(env.AVAX_RPC_URL);
+          break;
+        default:
+          provider = this.ethProvider;
+      }
+
+      const abi = [
+        'function name() view returns (string)',
+        'function symbol() view returns (string)',
+        'function decimals() view returns (uint8)',
+        'function totalSupply() view returns (uint256)',
+      ];
+
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+
+      const [name, symbol, decimals, totalSupply] = await Promise.all([
+        contract.name().catch(() => 'Unknown'),
+        contract.symbol().catch(() => '???'),
+        contract.decimals().catch(() => 18),
+        contract.totalSupply().catch(() => 0n),
+      ]);
+
+      return {
+        valid: true,
+        name,
+        symbol,
+        decimals: Number(decimals),
+        totalSupply: totalSupply.toString(),
+      };
+    } catch (error) {
+      logger.error(`Failed to validate custom token: ${contractAddress} on ${networkType}`, { error });
+      return { valid: false };
+    }
+  }
+
+  /**
+   * Get balance of a custom ERC-20/BEP-20 token for a given address.
+   */
+  async getCustomTokenBalance(
+    address: string,
+    contractAddress: string,
+    decimals: number,
+    networkType: 'ethereum' | 'bsc' | 'polygon' | 'arbitrum' | 'optimism' | 'base' | 'avalanche',
+  ): Promise<Decimal> {
+    try {
+      let provider: ethers.JsonRpcProvider;
+      switch (networkType) {
+        case 'bsc': provider = this.bscProvider; break;
+        case 'polygon': provider = this.maticProvider; break;
+        case 'arbitrum': provider = new ethers.JsonRpcProvider(env.ARB_RPC_URL); break;
+        case 'optimism': provider = new ethers.JsonRpcProvider(env.OP_RPC_URL); break;
+        case 'base': provider = new ethers.JsonRpcProvider(env.BASE_RPC_URL); break;
+        case 'avalanche': provider = new ethers.JsonRpcProvider(env.AVAX_RPC_URL); break;
+        default: provider = this.ethProvider;
+      }
+
+      const abi = ['function balanceOf(address) view returns (uint256)'];
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+      const balance = await contract.balanceOf(address);
+      return fromSmallestUnit(balance, decimals);
+    } catch (error) {
+      logger.error(`Failed to get custom token balance: ${contractAddress}`, { error });
+      return new Decimal('0');
+    }
+  }
+
+  /**
+   * Generate QR code data for payment (BIP21 for BTC, EIP-681 for ETH).
+   */
+  generatePaymentUri(
+    symbol: CryptoSymbol,
+    address: string,
+    amount?: string,
+  ): string {
+    const config = SUPPORTED_CRYPTOS[symbol];
+    if (!config) return address;
+
+    switch (symbol) {
+      case CryptoSymbol.BTC:
+        // BIP21: bitcoin:<address>?amount=<amount>
+        return amount ? `bitcoin:${address}?amount=${amount}` : `bitcoin:${address}`;
+
+      case CryptoSymbol.LN_BTC:
+        // Lightning: just the BOLT11 invoice
+        return address;
+
+      case CryptoSymbol.ETH:
+      case CryptoSymbol.ARB_ETH:
+      case CryptoSymbol.OP_ETH:
+      case CryptoSymbol.BASE_ETH:
+        // EIP-681: ethereum:<address>[@chainId]?value=<wei>
+        if (amount && config.chainId) {
+          const wei = BigInt(Math.floor(parseFloat(amount) * 1e18));
+          return `ethereum:${address}@${config.chainId}?value=${wei}`;
+        }
+        return `ethereum:${address}`;
+
+      case CryptoSymbol.USDT_ERC20:
+      case CryptoSymbol.USDC_ERC20:
+      case CryptoSymbol.DAI_ERC20:
+      case CryptoSymbol.SHIB:
+      case CryptoSymbol.LINK:
+      case CryptoSymbol.UNI:
+      case CryptoSymbol.AAVE:
+      case CryptoSymbol.PEPE:
+        // EIP-681 for ERC-20: ethereum:<contract>@<chainId>/transfer?address=<to>&uint256=<amount>
+        if (amount && config.tokenContract && config.chainId) {
+          const smallest = BigInt(Math.floor(parseFloat(amount) * Math.pow(10, config.decimals)));
+          return `ethereum:${config.tokenContract}@${config.chainId}/transfer?address=${address}&uint256=${smallest}`;
+        }
+        return `ethereum:${address}`;
+
+      case CryptoSymbol.LTC:
+        return amount ? `litecoin:${address}?amount=${amount}` : `litecoin:${address}`;
+
+      case CryptoSymbol.DOGE:
+        return amount ? `dogecoin:${address}?amount=${amount}` : `dogecoin:${address}`;
+
+      case CryptoSymbol.BCH:
+        return amount ? `bitcoincash:${address}?amount=${amount}` : `bitcoincash:${address}`;
+
+      default:
+        return address;
+    }
   }
 }
 

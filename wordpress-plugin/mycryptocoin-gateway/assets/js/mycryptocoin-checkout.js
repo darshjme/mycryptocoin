@@ -142,7 +142,8 @@
 				});
 			} else {
 				// Fallback: display the address as copyable text (no external API calls).
-				$container.html('<p style="font-size:13px;color:#718096;padding:20px;">QR code library not loaded. Please copy the address below.</p>');
+				var qrFallback = (mycryptocoinCheckout.i18n && mycryptocoinCheckout.i18n.qrFallback) || 'QR code library not loaded. Please copy the address below.';
+				$container.html('<p style="font-size:13px;color:#718096;padding:20px;">' + $('<span>').text(qrFallback).html() + '</p>');
 			}
 		},
 
@@ -318,7 +319,8 @@
 
 			if (remaining <= 0) {
 				$timer.addClass('expired');
-				$timer.html('<span class="mycryptocoin-timer__icon">&#9203;</span> Payment window expired');
+				var expiredText = (mycryptocoinCheckout.i18n && mycryptocoinCheckout.i18n.timerExpired) || 'Payment window expired';
+				$timer.html('<span class="mycryptocoin-timer__icon">&#9203;</span> ' + expiredText);
 				this.stopTimer();
 				return;
 			}
@@ -328,7 +330,8 @@
 
 			var display = (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
 
-			$timer.html('<span class="mycryptocoin-timer__icon">&#9203;</span> Time remaining: ' + display);
+			var timeLabel = (mycryptocoinCheckout.i18n && mycryptocoinCheckout.i18n.timeRemaining) || 'Time remaining:';
+			$timer.html('<span class="mycryptocoin-timer__icon">&#9203;</span> ' + timeLabel + ' ' + display);
 
 			// Add urgency styling when under 2 minutes.
 			if (remaining < 120000) {
@@ -372,7 +375,8 @@
 		 */
 		showCopyFeedback: function ($button) {
 			var originalText = $button.text();
-			$button.text('Copied!');
+			var copiedText = (mycryptocoinCheckout.i18n && mycryptocoinCheckout.i18n.copied) || 'Copied!';
+			$button.text(copiedText);
 			setTimeout(function () {
 				$button.text(originalText);
 			}, 2000);
