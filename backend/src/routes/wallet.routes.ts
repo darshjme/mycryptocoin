@@ -4,7 +4,7 @@ import { authenticateAny } from '../middleware/auth';
 import { validate } from '../middleware/validator';
 import { authenticatedRateLimiter } from '../middleware/rateLimiter';
 import {
-  walletCryptoParamSchema,
+  walletParamSchema,
   autoWithdrawSchema,
   withdrawSchema,
 } from '../validators/wallet.schema';
@@ -17,20 +17,20 @@ router.use(authenticatedRateLimiter);
 router.get('/', walletController.getWallets);
 
 router.get(
-  '/:crypto',
-  validate({ params: walletCryptoParamSchema }),
+  '/:network/:token',
+  validate({ params: walletParamSchema }),
   walletController.getWallet,
 );
 
 router.put(
-  '/:crypto/auto-withdraw',
-  validate({ params: walletCryptoParamSchema, body: autoWithdrawSchema }),
+  '/:network/:token/auto-withdraw',
+  validate({ params: walletParamSchema, body: autoWithdrawSchema }),
   walletController.configureAutoWithdraw,
 );
 
 router.post(
-  '/:crypto/withdraw',
-  validate({ params: walletCryptoParamSchema, body: withdrawSchema }),
+  '/:network/:token/withdraw',
+  validate({ params: walletParamSchema, body: withdrawSchema }),
   walletController.withdraw,
 );
 

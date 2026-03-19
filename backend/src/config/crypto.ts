@@ -6,7 +6,9 @@ export { CryptoNetwork, TokenSymbol };
 /**
  * Backward-compatible CryptoSymbol enum.
  * Legacy code (crypto.service, wallet.service, etc.) uses CryptoSymbol.BTC style.
- * Maps to CryptoKey internally.
+ * Each value matches a CryptoKey so `SUPPORTED_CRYPTOS[CryptoSymbol.BTC]` works.
+ * Coins without SUPPORTED_CRYPTOS entries (MATIC, DOGE, XRP) are placeholders
+ * for future implementation; crypto.service switch cases handle them gracefully.
  */
 export enum CryptoSymbol {
   BTC = 'BITCOIN:BTC',
@@ -17,8 +19,9 @@ export enum CryptoSymbol {
   TRX = 'TRON:TRX',
   BNB = 'BSC:BNB',
   SOL = 'SOLANA:SOL',
-  MATIC = 'POLYGON:MATIC',
   LTC = 'LITECOIN:LTC',
+  // Planned but not yet fully supported:
+  MATIC = 'POLYGON:MATIC',
   DOGE = 'DOGECOIN:DOGE',
   XRP = 'XRPL:XRP',
 }
