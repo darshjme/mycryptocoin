@@ -77,6 +77,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${manrope.variable} scroll-smooth`}>
+      <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+      </head>
       <body className="font-sans bg-brand-dark text-slate-200 antialiased">
         {/* Loading Screen */}
         <div id="loader-wrapper">
