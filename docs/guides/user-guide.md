@@ -374,6 +374,43 @@ Each transaction shows:
 
 ---
 
+## Understanding USDT and Auto-Conversion
+
+### What is USDT?
+
+USDT (Tether) is a stablecoin -- a cryptocurrency pegged to the US Dollar. 1 USDT is always approximately equal to $1 USD. This means your USDT balance is not subject to the price swings that affect Bitcoin or Ethereum.
+
+### Why USDT Matters for Your Business
+
+When you accept a payment in Bitcoin, the value can change between when the customer pays and when you withdraw. For example, if you receive 0.001 BTC worth $65 today, it might be worth $60 or $70 tomorrow.
+
+USDT eliminates this risk. Whether a customer pays you $100 in USDT, it stays worth approximately $100.
+
+### Auto-Conversion to USDT
+
+MyCryptoCoin can automatically convert all incoming payments to USDT at the time of settlement. This means:
+
+- Customer pays in BTC, ETH, SOL, or any supported crypto
+- MyCryptoCoin converts the received amount to USDT at the current market rate
+- You receive USDT in your wallet
+
+To check if auto-conversion is available for your account, visit **Dashboard > Settings > Payment Preferences** or contact support.
+
+### When to Use Auto-Conversion
+
+| Scenario | Recommendation |
+|----------|----------------|
+| You want stable, predictable revenue | Enable auto-conversion to USDT |
+| You want to hold crypto as an investment | Disable auto-conversion |
+| You want to withdraw in fiat regularly | Enable auto-conversion (easier to convert USDT to fiat) |
+| You accept USDT payments only | Not needed (already in USDT) |
+
+### Refunds in USDT
+
+When issuing refunds, you can choose to refund in USDT regardless of the original payment crypto. This is useful when the original crypto has fluctuated in price since the payment.
+
+---
+
 ## Understanding Fees
 
 ### Platform Fee
