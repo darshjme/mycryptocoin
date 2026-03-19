@@ -1,0 +1,247 @@
+# ===========================================================================
+# MyCryptoCoin — Production Docker Compose
+#
+# Services:
+#   - backend (3 replicas)
+#   - postgres (primary + replica)
+#   - redis (with persistence)
+#   - nginx (reverse proxy, SSL termination)
+#   - certbot (Let's Encrypt SSL)
+# ===========================================================================
+
+version: "3.9"
+
+services:
+  # ---------- Nginx Reverse Proxy -------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: mcc-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl-params.conf:/etc/nginx/ssl-params.conf:ro
+      - certbot-conf:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - backend
+    networks:
+      - frontend
+      - backend-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---------- Certbot (SSL) -------------------------------------------------
+  certbot:
+    image: certbot/certbot:latest
+    container_name: mcc-certbot
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - frontend
+
+  # ---------- Backend API (3 replicas) --------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: mycryptocoin/backend:${APP_VERSION:-latest}
+    restart: always
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+      update_config:
+        parallelism: 1
+        delay: 30s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-primary:5432/${POSTGRES_DB}?schema=public
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - backend-logs:/app/logs
+      - whatsapp-sessions:/app/whatsapp-sessions
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # ---------- PostgreSQL Primary --------------------------------------------
+  postgres-primary:
+    image: postgres:16-alpine
+    container_name: mcc-postgres-primary
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mycryptocoin}
+      POSTGRES_USER: ${POSTGRES_USER:-mycryptocoin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - postgres-backups:/var/backups
+      - ./backend/src/scripts:/scripts:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mycryptocoin} -d ${POSTGRES_DB:-mycryptocoin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      postgres
+        -c wal_level=replica
+        -c max_wal_senders=5
+        -c wal_keep_size=1024
+        -c max_replication_slots=5
+        -c hot_standby=on
+        -c shared_buffers=256MB
+        -c effective_cache_size=1GB
+        -c work_mem=16MB
+        -c maintenance_work_mem=256MB
+        -c random_page_cost=1.1
+        -c max_connections=200
+        -c log_min_duration_statement=500
+        -c log_checkpoints=on
+        -c log_connections=on
+        -c log_disconnections=on
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  # ---------- PostgreSQL Replica --------------------------------------------
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: mcc-postgres-replica
+    restart: always
+    environment:
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - postgres-replica-data:/var/lib/postgresql/data
+    networks:
+      - backend-net
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      bash -c "
+        if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+          echo 'Initializing replica from primary...'
+          PGPASSWORD=${POSTGRES_PASSWORD} pg_basebackup -h postgres-primary -U ${POSTGRES_USER:-mycryptocoin} -D /var/lib/postgresql/data -Fp -Xs -R -P
+        fi
+        postgres -c hot_standby=on
+      "
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  # ---------- Redis ---------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: mcc-redis
+    restart: always
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      redis-server
+        --appendonly yes
+        --appendfsync everysec
+        --maxmemory 512mb
+        --maxmemory-policy allkeys-lru
+        --save 900 1
+        --save 300 10
+        --save 60 10000
+        --tcp-backlog 511
+        --timeout 300
+        --tcp-keepalive 300
+        --requirepass ${REDIS_PASSWORD:-}
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+# ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
+
+networks:
+  frontend:
+    driver: bridge
+  backend-net:
+    driver: bridge
+    internal: false
+
+# ---------------------------------------------------------------------------
+# Volumes
+# ---------------------------------------------------------------------------
+
+volumes:
+  postgres-data:
+    driver: local
+  postgres-replica-data:
+    driver: local
+  postgres-backups:
+    driver: local
+  redis-data:
+    driver: local
+  certbot-conf:
+    driver: local
+  certbot-www:
+    driver: local
+  nginx-logs:
+    driver: local
+  backend-logs:
+    driver: local
+  whatsapp-sessions:
+    driver: local

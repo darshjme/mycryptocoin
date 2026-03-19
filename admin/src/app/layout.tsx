@@ -1,0 +1,27 @@
+import type { Metadata } from "next";
+import "@/styles/globals.css";
+
+export const metadata: Metadata = {
+  title: "MyCryptoCoin Admin",
+  description: "MyCryptoCoin Payment Gateway Administration Panel",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className="dark">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/icon?family=Material+Icons"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen font-sans antialiased" style={{ background: 'var(--bg-body)', color: 'var(--text-primary)' }}>
+        {children}
+      </body>
+    </html>
+  );
+}

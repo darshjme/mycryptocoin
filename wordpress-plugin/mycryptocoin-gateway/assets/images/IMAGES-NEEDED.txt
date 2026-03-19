@@ -1,0 +1,35 @@
+MyCryptoCoin Gateway — Required Image Assets
+==============================================
+
+Place the following image files in this directory:
+
+Brand Logo
+----------
+- mycryptocoin-logo.svg          — MyCryptoCoin brand logo (used as gateway icon on checkout)
+- mycryptocoin-logo-dark.svg     — Dark variant for light backgrounds
+
+Cryptocurrency Icons (SVG preferred, 64x64 minimum)
+----------------------------------------------------
+- crypto-btc.svg                 — Bitcoin icon
+- crypto-eth.svg                 — Ethereum icon
+- crypto-usdt.svg                — Tether (USDT) icon
+- crypto-usdc.svg                — USD Coin (USDC) icon
+- crypto-bnb.svg                 — BNB icon
+- crypto-sol.svg                 — Solana icon
+- crypto-xrp.svg                 — XRP icon
+- crypto-ada.svg                 — Cardano (ADA) icon
+- crypto-doge.svg                — Dogecoin icon
+- crypto-matic.svg               — Polygon (MATIC) icon
+- crypto-ltc.svg                 — Litecoin icon
+- crypto-trx.svg                 — TRON (TRX) icon
+- crypto-avax.svg                — Avalanche (AVAX) icon
+
+Admin UI
+--------
+- icon-success.svg               — Green checkmark for success states
+- icon-error.svg                 — Red cross for error states
+- icon-warning.svg               — Yellow triangle for warning states
+
+Sources for free crypto icons:
+- https://cryptologos.cc/ (SVG format available)
+- https://github.com/spothq/cryptocurrency-icons (MIT licensed)

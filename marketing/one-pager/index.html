@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyCryptoCoin — One-Pager</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --dark-bg: #0a0a0f;
+    --card-bg: rgba(255,255,255,0.05);
+    --card-border: rgba(255,255,255,0.08);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --gradient: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  }
+
+  @page { size: A4 portrait; margin: 0; }
+
+  body {
+    font-family: 'Manrope', system-ui, sans-serif;
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  @media screen {
+    body { padding: 0; }
+  }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 28px 32px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Decorative glows */
+  .page::before {
+    content: '';
+    position: absolute;
+    top: -120px;
+    right: -80px;
+    width: 350px;
+    height: 350px;
+    background: var(--blue);
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.12;
+  }
+  .page::after {
+    content: '';
+    position: absolute;
+    bottom: -100px;
+    left: -60px;
+    width: 300px;
+    height: 300px;
+    background: var(--purple);
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.1;
+  }
+
+  .content { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }
+
+  /* ===== HEADER ===== */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .logo {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .logo span {
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .tagline {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== HERO ===== */
+  .hero {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 span {
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    max-width: 420px;
+    margin: 0 auto;
+    line-height: 1.5;
+  }
+
+  /* ===== VALUE PROPS ===== */
+  .value-props {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .value-prop {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 18px 16px;
+    text-align: center;
+  }
+  .vp-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin: 0 auto 10px;
+  }
+  .value-prop h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .value-prop p {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  /* ===== CRYPTOS ===== */
+  .crypto-strip {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .crypto-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 100px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  .crypto-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  /* ===== HOW IT WORKS ===== */
+  .section-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .step {
+    text-align: center;
+    position: relative;
+  }
+  .step-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 800;
+    margin: 0 auto 8px;
+  }
+  .step h4 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .step p {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  /* ===== PRICING ===== */
+  .pricing-box {
+    background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+    border: 1px solid rgba(139,92,246,0.2);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 22px;
+  }
+  .pricing-box .fee {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .pricing-box .fee-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+  }
+  .pricing-details {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+  }
+  .pricing-details span {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+  .pricing-details span strong {
+    color: var(--green);
+  }
+
+  /* ===== FOOTER / CTA ===== */
+  .footer-cta {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--card-border);
+  }
+  .cta-left h3 {
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 2px;
+  }
+  .cta-left h3 span {
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .cta-left p {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+  .cta-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .qr-placeholder {
+    width: 64px;
+    height: 64px;
+    background: #fff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 0.5rem;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.2;
+    padding: 4px;
+  }
+  .cta-info {
+    text-align: right;
+  }
+  .cta-info .url {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+  .cta-info .email {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="content">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="logo">My<span>Crypto</span>Coin</div>
+      <div class="tagline">The Stripe of Crypto Payments</div>
+    </div>
+
+    <!-- HERO -->
+    <div class="hero">
+      <h1>Accept Crypto Payments.<br><span>Effortlessly.</span></h1>
+      <p>One API integration. 10+ cryptocurrencies. 0.5% fee. Instant settlement. Enterprise-grade security. Start processing in under 5 minutes.</p>
+    </div>
+
+    <!-- VALUE PROPOSITIONS -->
+    <div class="value-props">
+      <div class="value-prop">
+        <div class="vp-icon" style="background: rgba(59,130,246,0.15); color: var(--blue);">&#9889;</div>
+        <h3>Instant Settlement</h3>
+        <p>Funds arrive in your wallet the moment a payment is confirmed on-chain. No holding periods.</p>
+      </div>
+      <div class="value-prop">
+        <div class="vp-icon" style="background: rgba(16,185,129,0.15); color: var(--green);">&#128176;</div>
+        <h3>Industry-Low 0.5% Fee</h3>
+        <p>Half the cost of competitors. No monthly fees, no setup costs, no hidden charges. You only pay when you earn.</p>
+      </div>
+      <div class="value-prop">
+        <div class="vp-icon" style="background: rgba(139,92,246,0.15); color: var(--purple);">&#128274;</div>
+        <h3>Enterprise Security</h3>
+        <p>HD wallets, E2E encryption, WhatsApp 2FA for withdrawals, HMAC webhooks, and full audit logging.</p>
+      </div>
+    </div>
+
+    <!-- SUPPORTED CRYPTOS -->
+    <div class="crypto-strip">
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #F7931A;"></div> Bitcoin</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #627EEA;"></div> Ethereum</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #26A17B;"></div> USDT</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #2775CA;"></div> USDC</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #F0B90B;"></div> BNB</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #DC1FFF;"></div> Solana</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #8247E5;"></div> Polygon</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #00D1FF;"></div> Avalanche</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #345D9D;"></div> Litecoin</div>
+      <div class="crypto-chip"><div class="crypto-dot" style="background: #E6007A;"></div> Polkadot</div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div class="section-title">How It Works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Integrate</h4>
+        <p>Add our SDK, use the WordPress plugin, or call our REST API. Get your API key and go live in minutes.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Customer Pays</h4>
+        <p>Your customer selects a cryptocurrency at checkout, scans a QR code, and pays directly on-chain.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>You Receive</h4>
+        <p>Funds land in your MyCryptoCoin wallet instantly. Withdraw anytime or set up auto-withdrawals.</p>
+      </div>
+    </div>
+
+    <!-- PRICING -->
+    <div class="pricing-box">
+      <div class="fee">0.5%</div>
+      <div class="fee-label">Per transaction. That's it.</div>
+      <div class="pricing-details">
+        <span><strong>$0</strong> monthly fee</span>
+        <span><strong>$0</strong> setup fee</span>
+        <span><strong>$0</strong> hidden charges</span>
+        <span><strong>Instant</strong> settlement</span>
+      </div>
+    </div>
+
+    <!-- FOOTER CTA -->
+    <div class="footer-cta">
+      <div class="cta-left">
+        <h3>Get started in <span>5 minutes.</span></h3>
+        <p>No credit card required. No paperwork. Just sign up and integrate.</p>
+      </div>
+      <div class="cta-right">
+        <div class="qr-placeholder">
+          QR<br>mycrypto<br>.co.in
+        </div>
+        <div class="cta-info">
+          <div class="url">mycrypto.co.in</div>
+          <div class="email">hello@mycrypto.co.in</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

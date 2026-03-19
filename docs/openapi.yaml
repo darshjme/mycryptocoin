@@ -1,0 +1,900 @@
+openapi: 3.0.3
+info:
+  title: MyCryptoCoin Payment Gateway API
+  description: |
+    MyCryptoCoin is the Stripe of crypto payments. Accept Bitcoin, Ethereum, USDT,
+    and 10+ cryptocurrencies with a single integration. 0.5% per transaction, no
+    hidden fees.
+
+    ## Authentication
+    All API requests require authentication via either:
+    - **API Key**: Pass your key in the `X-API-Key` header
+    - **Bearer Token**: Pass a JWT in the `Authorization: Bearer <token>` header
+
+    API keys are prefixed:
+    - `mcc_live_` for production
+    - `mcc_test_` for sandbox/test mode
+
+    ## Rate Limits
+    Default rate limits are returned in response headers:
+    - `X-RateLimit-Limit` — Requests allowed per window
+    - `X-RateLimit-Remaining` — Requests remaining
+    - `X-RateLimit-Reset` — Unix timestamp when the window resets
+
+    ## Pagination
+    List endpoints support page-based pagination:
+    - `page` — Page number (default: 1)
+    - `limit` — Items per page (default: 20, max: 100)
+
+    Response includes `pagination` object with `total`, `page`, `limit`, `pages`.
+
+    ## Errors
+    All errors follow a consistent format:
+    ```json
+    {
+      "success": false,
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "Human-readable description",
+        "details": {}
+      }
+    }
+    ```
+  version: "1.0.0"
+  contact:
+    name: MyCryptoCoin Developer Support
+    email: developers@mycrypto.co.in
+    url: https://mycrypto.co.in/support
+  license:
+    name: Proprietary
+    url: https://mycrypto.co.in/terms
+
+servers:
+  - url: https://api.mycrypto.co.in/api/v1
+    description: Production
+  - url: http://localhost:4000/api/v1
+    description: Local development
+
+tags:
+  - name: Authentication
+    description: Register, login, OTP verification, and token management
+  - name: Payments
+    description: Create, list, and verify crypto payments
+  - name: Wallets
+    description: View balances, configure auto-withdrawal, and withdraw funds
+  - name: Transactions
+    description: View unified transaction history
+  - name: Webhooks
+    description: Manage webhook endpoints for event notifications
+  - name: Merchant
+    description: Merchant profile and API key management
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: "API key prefixed with mcc_live_ or mcc_test_"
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/login or /auth/refresh-token
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  schemas:
+    CryptoSymbol:
+      type: string
+      enum: [BTC, ETH, USDT_ERC20, USDT_TRC20, BNB, SOL, MATIC, LTC, DOGE, XRP]
+
+    PaymentStatus:
+      type: string
+      enum: [PENDING, CONFIRMING, CONFIRMED, COMPLETED, EXPIRED, FAILED, REFUNDED]
+
+    WebhookEventType:
+      type: string
+      enum:
+        - payment.created
+        - payment.confirming
+        - payment.confirmed
+        - payment.completed
+        - payment.expired
+        - payment.failed
+        - withdrawal.initiated
+        - withdrawal.completed
+        - withdrawal.failed
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code (UPPER_CASE)
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: "Request validation failed"
+            details:
+              type: object
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+            refreshToken:
+              type: string
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                email:
+                  type: string
+                role:
+                  type: string
+
+    CreatePaymentRequest:
+      type: object
+      required: [crypto, amount]
+      properties:
+        crypto:
+          $ref: "#/components/schemas/CryptoSymbol"
+        amount:
+          type: string
+          description: Payment amount as decimal string
+          example: "99.99"
+        currency:
+          type: string
+          default: USD
+          minLength: 3
+          maxLength: 3
+        description:
+          type: string
+          maxLength: 500
+        orderId:
+          type: string
+          maxLength: 100
+          description: Your internal order ID
+        customerEmail:
+          type: string
+          format: email
+        customerName:
+          type: string
+          maxLength: 200
+        callbackUrl:
+          type: string
+          format: uri
+        redirectUrl:
+          type: string
+          format: uri
+        expiryMinutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+          default: 30
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    CreateWithdrawalRequest:
+      type: object
+      required: [address, amount]
+      properties:
+        address:
+          type: string
+          description: Destination wallet address
+        amount:
+          type: string
+          description: Amount to withdraw as decimal string
+        memo:
+          type: string
+          maxLength: 200
+          description: Memo/tag (e.g., for XRP destination tag)
+
+    AutoWithdrawRequest:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+        address:
+          type: string
+          description: Destination address (required when enabling)
+        threshold:
+          type: string
+          description: Balance threshold to trigger auto-withdrawal
+
+    CreateWebhookRequest:
+      type: object
+      required: [url, events]
+      properties:
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookEventType"
+          minItems: 1
+        isActive:
+          type: boolean
+          default: true
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        businessName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        website:
+          type: string
+          format: uri
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+        phone:
+          type: string
+        whatsappNumber:
+          type: string
+        notificationPreferences:
+          type: object
+          properties:
+            paymentReceived:
+              type: boolean
+            paymentConfirmed:
+              type: boolean
+            withdrawalCompleted:
+              type: boolean
+            whatsappEnabled:
+              type: boolean
+            emailEnabled:
+              type: boolean
+        webhookUrl:
+          type: string
+          format: uri
+
+    CreateApiKeyRequest:
+      type: object
+      required: [name, mode, permissions]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        mode:
+          type: string
+          enum: [live, test]
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+              - "payments:read"
+              - "payments:write"
+              - "wallets:read"
+              - "wallets:write"
+              - "transactions:read"
+              - "webhooks:manage"
+          minItems: 1
+        ipWhitelist:
+          type: array
+          items:
+            type: string
+            format: ipv4
+
+paths:
+  # ═══════════════════════════════════════════════════════════
+  #  AUTHENTICATION
+  # ═══════════════════════════════════════════════════════════
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new merchant account
+      description: |
+        Creates a new merchant account. Requires email, password, businessName, and phone.
+        A verification OTP is sent to the provided phone/WhatsApp number.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, businessName, phone]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                  description: "Must include uppercase, lowercase, number, and special character"
+                businessName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                phone:
+                  type: string
+                  description: "International format, e.g. +1234567890"
+                whatsappNumber:
+                  type: string
+                  description: Optional WhatsApp number in international format
+                country:
+                  type: string
+                  minLength: 2
+                  maxLength: 2
+                website:
+                  type: string
+                  format: uri
+      responses:
+        "201":
+          description: Account created, verification OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email or phone already registered
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/verify-whatsapp-otp:
+    post:
+      tags: [Authentication]
+      summary: Verify WhatsApp OTP
+      description: |
+        Verify the 6-digit OTP sent to the merchant's phone/WhatsApp number.
+        OTP expires after 10 minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, otp, purpose]
+              properties:
+                phone:
+                  type: string
+                  description: "International format, e.g. +1234567890"
+                otp:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  description: 6-digit numeric OTP
+                purpose:
+                  type: string
+                  enum: [registration, login, 2fa]
+      responses:
+        "200":
+          description: OTP verified
+        "400":
+          description: Invalid or expired OTP
+
+  /auth/verify-email:
+    post:
+      tags: [Authentication]
+      summary: Verify email address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  description: Email verification token
+      responses:
+        "200":
+          description: Email verified
+
+  /auth/refresh-token:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      description: Exchange a valid refresh token for new access and refresh tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "200":
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid or expired refresh token
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Log out (invalidate session)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Reset instructions sent
+
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset password with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                  description: Password reset token
+                password:
+                  type: string
+                  minLength: 8
+                  description: "Must include uppercase, lowercase, number, and special character"
+      responses:
+        "200":
+          description: Password reset successful
+        "400":
+          description: Invalid token or weak password
+
+  # ═══════════════════════════════════════════════════════════
+  #  PAYMENTS
+  # ═══════════════════════════════════════════════════════════
+
+  /payments/create:
+    post:
+      tags: [Payments]
+      summary: Create a new payment
+      description: Creates a payment and returns a deposit address with QR code.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "201":
+          description: Payment created
+
+  /payments:
+    get:
+      tags: [Payments]
+      summary: List payments
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/PaymentStatus"
+        - name: crypto
+          in: query
+          schema:
+            $ref: "#/components/schemas/CryptoSymbol"
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: orderId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of payments
+
+  /payments/{id}:
+    get:
+      tags: [Payments]
+      summary: Get payment details
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Payment details
+        "404":
+          description: Payment not found
+
+  /payments/{id}/verify:
+    post:
+      tags: [Payments]
+      summary: Verify payment on blockchain
+      description: Performs a real-time blockchain check on a payment.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [txHash]
+              properties:
+                txHash:
+                  type: string
+                  description: On-chain transaction hash to verify
+      responses:
+        "200":
+          description: Verification result
+        "404":
+          description: Payment not found
+
+  # ═══════════════════════════════════════════════════════════
+  #  WALLETS
+  # ═══════════════════════════════════════════════════════════
+
+  /wallets:
+    get:
+      tags: [Wallets]
+      summary: List all wallets with balances
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: List of wallets
+
+  /wallets/{crypto}:
+    get:
+      tags: [Wallets]
+      summary: Get specific wallet details
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: crypto
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/CryptoSymbol"
+      responses:
+        "200":
+          description: Wallet details
+        "404":
+          description: Cryptocurrency not supported
+
+  /wallets/{crypto}/auto-withdraw:
+    put:
+      tags: [Wallets]
+      summary: Configure auto-withdrawal
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: crypto
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/CryptoSymbol"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoWithdrawRequest"
+      responses:
+        "200":
+          description: Auto-withdrawal configured
+
+  /wallets/{crypto}/withdraw:
+    post:
+      tags: [Wallets]
+      summary: Withdraw funds to an external address
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: crypto
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/CryptoSymbol"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWithdrawalRequest"
+      responses:
+        "201":
+          description: Withdrawal initiated
+        "400":
+          description: Insufficient balance or invalid address
+
+  # ═══════════════════════════════════════════════════════════
+  #  TRANSACTIONS
+  # ═══════════════════════════════════════════════════════════
+
+  /transactions:
+    get:
+      tags: [Transactions]
+      summary: List all transactions
+      description: Unified transaction history including payments, withdrawals, fees, and refunds.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated list of transactions
+
+  # ═══════════════════════════════════════════════════════════
+  #  WEBHOOKS
+  # ═══════════════════════════════════════════════════════════
+
+  /webhooks:
+    post:
+      tags: [Webhooks]
+      summary: Register a webhook endpoint
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookRequest"
+      responses:
+        "201":
+          description: Webhook registered (secret returned only once)
+
+    get:
+      tags: [Webhooks]
+      summary: List webhook endpoints
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of webhooks
+
+  /webhooks/{id}:
+    put:
+      tags: [Webhooks]
+      summary: Update a webhook endpoint
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: uri
+                events:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/WebhookEventType"
+                isActive:
+                  type: boolean
+      responses:
+        "200":
+          description: Webhook updated
+        "404":
+          description: Webhook not found
+
+    delete:
+      tags: [Webhooks]
+      summary: Delete a webhook endpoint
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Webhook deleted
+        "404":
+          description: Webhook not found
+
+  # ═══════════════════════════════════════════════════════════
+  #  MERCHANT
+  # ═══════════════════════════════════════════════════════════
+
+  /merchant/profile:
+    get:
+      tags: [Merchant]
+      summary: Get merchant profile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Merchant profile data
+
+    put:
+      tags: [Merchant]
+      summary: Update merchant profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Profile updated
+
+  /merchant/api-keys:
+    post:
+      tags: [Merchant]
+      summary: Generate a new API key
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyRequest"
+      responses:
+        "201":
+          description: API key created (full key returned only once)
+
+    get:
+      tags: [Merchant]
+      summary: List API keys
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of API keys
+
+  /merchant/api-keys/{id}:
+    delete:
+      tags: [Merchant]
+      summary: Revoke an API key
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: API key revoked
+        "404":
+          description: API key not found

@@ -1,0 +1,509 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+@layer base {
+  :root {
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --secondary: #a78bfa;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #f43f5e;
+    --info: #3b82f6;
+    --bg-body: #0a0d14;
+    --bg-card: #111827;
+    --bg-card-hover: #1a2234;
+    --bg-sidebar: #0c1019;
+    --bg-header: rgba(10, 13, 20, 0.85);
+    --border-color: rgba(255, 255, 255, 0.06);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Manrope', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--bg-body);
+    color: var(--text-primary);
+    font-family: 'Manrope', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.3);
+    color: white;
+  }
+}
+
+@layer components {
+  /* Legacy alias */
+  .glass-card {
+    @apply relative overflow-hidden rounded-2xl;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  /* CryptoZone-style Card */
+  .cz-card {
+    @apply relative rounded-2xl overflow-hidden;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .cz-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  }
+
+  .cz-card-hover {
+    @apply cz-card transition-all duration-300;
+  }
+
+  .cz-card-hover:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+  }
+
+  /* CryptoZone-style Card Header */
+  .cz-card-header {
+    @apply flex items-center justify-between px-6 py-4;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .cz-card-header.no-border {
+    border-bottom: none;
+  }
+
+  .cz-card-body {
+    @apply px-6 py-4;
+  }
+
+  /* CryptoZone heading style */
+  .cz-heading {
+    @apply text-lg font-semibold text-white;
+  }
+
+  .cz-heading span {
+    @apply text-sm font-normal text-slate-400;
+  }
+
+  /* CryptoZone-style hero/bubles card */
+  .cz-hero-card {
+    @apply cz-card overflow-hidden;
+    background: linear-gradient(135deg, #1a1b3a 0%, #0f1629 50%, #111827 100%);
+  }
+
+  .cz-hero-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* CryptoZone-style Input */
+  .cz-input {
+    @apply w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 outline-none transition-all duration-200 text-sm;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+  }
+
+  .cz-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  /* CryptoZone-style Button */
+  .cz-btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 cursor-pointer;
+  }
+
+  .cz-btn-primary {
+    @apply cz-btn text-white;
+    background: var(--primary);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+  }
+
+  .cz-btn-primary:hover {
+    background: var(--primary-hover);
+    box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .cz-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .cz-btn-success {
+    @apply cz-btn text-white;
+    background: var(--success);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  }
+
+  .cz-btn-success:hover {
+    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .cz-btn-danger {
+    @apply cz-btn text-white;
+    background: var(--danger);
+    box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3);
+  }
+
+  .cz-btn-danger:hover {
+    box-shadow: 0 6px 25px rgba(244, 63, 94, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .cz-btn-outline {
+    @apply cz-btn text-slate-300;
+    background: transparent;
+    border: 1px solid var(--border-color);
+  }
+
+  .cz-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .cz-btn-xs {
+    @apply px-3 py-1.5 text-xs rounded-lg;
+  }
+
+  .cz-btn-sm {
+    @apply px-4 py-2 text-xs rounded-lg;
+  }
+
+  /* CryptoZone-style Table */
+  .cz-table {
+    @apply w-full;
+  }
+
+  .cz-table thead th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .cz-table tbody tr {
+    @apply transition-colors duration-150;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .cz-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .cz-table tbody td {
+    @apply px-4 py-3.5 text-sm;
+  }
+
+  /* CryptoZone Badges */
+  .cz-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .cz-badge-success {
+    @apply cz-badge;
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+
+  .cz-badge-warning {
+    @apply cz-badge;
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+
+  .cz-badge-danger {
+    @apply cz-badge;
+    background: rgba(244, 63, 94, 0.12);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.2);
+  }
+
+  .cz-badge-info {
+    @apply cz-badge;
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+  }
+
+  .cz-badge-neutral {
+    @apply cz-badge;
+    background: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .cz-badge-purple {
+    @apply cz-badge;
+    background: rgba(139, 92, 246, 0.12);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+  }
+
+  /* Sidebar */
+  .sidebar-nav-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-400 transition-all duration-200 text-sm font-medium cursor-pointer;
+  }
+
+  .sidebar-nav-link:hover {
+    @apply text-white;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .sidebar-nav-link.active {
+    @apply text-white;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+  }
+
+  .sidebar-nav-link.active .material-icons {
+    color: var(--primary);
+  }
+
+  /* CryptoZone-style previews list (MarketPreviews) */
+  .cz-preview-item {
+    @apply flex items-center justify-between px-5 py-3 transition-colors duration-150;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .cz-preview-item:last-child {
+    border-bottom: none;
+  }
+
+  .cz-preview-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* CryptoZone icon box */
+  .cz-icon-box {
+    @apply flex items-center justify-center w-10 h-10 rounded-xl text-white;
+  }
+
+  .cz-icon-box-sm {
+    @apply flex items-center justify-center w-8 h-8 rounded-lg text-white text-sm;
+  }
+
+  /* Server status bar */
+  .cz-status-bar {
+    @apply flex items-center gap-2;
+  }
+
+  .cz-status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+
+  .cz-status-dot.healthy {
+    background: var(--success);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  }
+
+  .cz-status-dot.degraded {
+    background: var(--warning);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  }
+
+  .cz-status-dot.down {
+    background: var(--danger);
+    box-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
+  }
+
+  /* CryptoZone Order book style list */
+  .cz-list-head {
+    @apply flex items-center justify-between px-4 py-2 text-xs font-semibold text-slate-500;
+  }
+
+  .cz-list-row {
+    @apply flex items-center justify-between px-4 py-1.5 text-sm relative;
+  }
+
+  .cz-list-row .bg-layer {
+    @apply absolute inset-0 opacity-10;
+    right: auto;
+    width: var(--width, 50%);
+  }
+
+  /* Tabs CryptoZone-style */
+  .cz-tabs {
+    @apply flex gap-1 p-1 rounded-xl;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .cz-tab {
+    @apply px-4 py-2 rounded-lg text-sm font-medium text-slate-400 transition-all duration-200 cursor-pointer;
+  }
+
+  .cz-tab.active {
+    @apply text-white;
+    background: var(--primary);
+  }
+
+  .cz-tab:hover:not(.active) {
+    @apply text-white;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  /* Pagination */
+  .cz-pagination {
+    @apply flex items-center gap-1;
+  }
+
+  .cz-page-btn {
+    @apply w-8 h-8 flex items-center justify-center rounded-lg text-sm text-slate-400 transition-all duration-200 cursor-pointer;
+  }
+
+  .cz-page-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: white;
+  }
+
+  .cz-page-btn.active {
+    background: var(--primary);
+    color: white;
+  }
+
+  /* QR Code scanning animation */
+  .qr-scanning {
+    position: relative;
+  }
+
+  .qr-scanning::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 1rem;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed, #3b82f6, #4f46e5);
+    background-size: 300% 300%;
+    animation: borderSpin 3s linear infinite;
+    z-index: -1;
+  }
+
+  /* Pulse dot for status indicators */
+  .pulse-dot-animated::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: inherit;
+    animation: pulse 2s ease-in-out infinite;
+    opacity: 0.4;
+  }
+
+  /* Dropdown */
+  .cz-dropdown {
+    @apply absolute right-0 top-full mt-2 min-w-[160px] rounded-xl overflow-hidden z-50;
+    background: #1e293b;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .cz-dropdown-item {
+    @apply px-4 py-2.5 text-sm text-slate-300 transition-colors cursor-pointer;
+  }
+
+  .cz-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+  }
+
+  /* Chart tooltip */
+  .cz-tooltip {
+    @apply absolute rounded-lg px-3 py-2 text-xs pointer-events-none z-50;
+    background: #1e293b;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #60a5fa 100%);
+  }
+
+  .text-gradient-brand {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  }
+
+  .animate-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes borderSpin {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0; transform: scale(1.5); }
+}
