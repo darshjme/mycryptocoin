@@ -40,6 +40,7 @@ export const QUEUE_NAMES = {
   EMAIL_SENDING: 'email-sending',
   WHATSAPP_SENDING: 'whatsapp-sending',
   RECONCILIATION: 'reconciliation',
+  CONVERSION_PROCESSING: 'conversion-processing',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
