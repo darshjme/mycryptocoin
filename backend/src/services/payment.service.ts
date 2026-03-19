@@ -406,69 +406,84 @@ export class PaymentService {
   /**
    * Check pending payments for incoming transactions.
    */
+  /**
+   * Check pending payments with bounded concurrency.
+   * Without concurrency limits, 10K pending payments would fire 10K
+   * simultaneous RPC calls, saturating connections and triggering rate limits.
+   */
   private async checkPendingPayments(): Promise<void> {
     const paymentIds = await redis.smembers('payments:monitoring');
+    if (paymentIds.length === 0) return;
 
-    for (const paymentId of paymentIds) {
-      try {
-        const cached = await redis.get(`payment:${paymentId}:data`);
-        if (!cached) {
-          await redis.srem('payments:monitoring', paymentId);
-          continue;
-        }
+    // Process in batches of 20 to avoid overwhelming RPC endpoints
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < paymentIds.length; i += BATCH_SIZE) {
+      const batch = paymentIds.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(
+        batch.map((paymentId) => this.checkSinglePendingPayment(paymentId)),
+      );
+    }
+  }
 
-        const paymentData = JSON.parse(cached);
-        const network = paymentData.network as CryptoNetwork;
-        const token = paymentData.token as TokenSymbol;
+  private async checkSinglePendingPayment(paymentId: string): Promise<void> {
+    try {
+      const cached = await redis.get(`payment:${paymentId}:data`);
+      if (!cached) {
+        await redis.srem('payments:monitoring', paymentId);
+        return;
+      }
 
-        // Check if funds have arrived at the deposit address
-        const balance = await cryptoService.getBalance(
-          network,
-          token,
-          paymentData.depositAddress,
-        );
+      const paymentData = JSON.parse(cached);
+      const network = paymentData.network as CryptoNetwork;
+      const token = paymentData.token as TokenSymbol;
 
-        if (balance.gt(0)) {
-          // Payment detected
-          const payment = await prisma.payment.findUnique({
+      // Check if funds have arrived at the deposit address
+      const balance = await cryptoService.getBalance(
+        network,
+        token,
+        paymentData.depositAddress,
+      );
+
+      if (balance.gt(0)) {
+        // Payment detected
+        const payment = await prisma.payment.findUnique({
+          where: { id: paymentId },
+        });
+
+        if (payment && payment.status === PaymentStatus.AWAITING_PAYMENT) {
+          await prisma.payment.update({
             where: { id: paymentId },
+            data: { status: PaymentStatus.UNDERPAID, receivedAmount: balance },
           });
 
-          if (payment && payment.status === PaymentStatus.AWAITING_PAYMENT) {
-            await prisma.payment.update({
-              where: { id: paymentId },
-              data: { status: PaymentStatus.UNDERPAID, receivedAmount: balance },
-            });
+          await redis.srem('payments:monitoring', paymentId);
+          await redis.sadd('payments:confirming', paymentId);
 
-            await redis.srem('payments:monitoring', paymentId);
-            await redis.sadd('payments:confirming', paymentId);
+          await walletService.addPendingBalance(
+            paymentData.merchantId,
+            network,
+            token,
+            balance,
+          );
 
-            await walletService.addPendingBalance(
-              paymentData.merchantId,
+          await webhookService.dispatch(
+            paymentData.merchantId,
+            'payment.confirmed',
+            {
+              paymentId,
+              receivedAmount: balance.toString(),
               network,
               token,
-              balance,
-            );
+            },
+          );
 
-            await webhookService.dispatch(
-              paymentData.merchantId,
-              'payment.confirmed',
-              {
-                paymentId,
-                receivedAmount: balance.toString(),
-                network,
-                token,
-              },
-            );
-
-            logger.info(
-              `Payment detected: ${paymentId} — ${balance} ${token} at ${paymentData.depositAddress}`,
-            );
-          }
+          logger.info(
+            `Payment detected: ${paymentId} — ${balance} ${token} at ${paymentData.depositAddress}`,
+          );
         }
-      } catch (error) {
-        logger.error(`Error checking payment ${paymentId}`, { error });
       }
+    } catch (error) {
+      logger.error(`Error checking payment ${paymentId}`, { error });
     }
   }
 

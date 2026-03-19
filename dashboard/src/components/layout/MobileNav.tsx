@@ -46,6 +46,8 @@ const mobileNavItems = [
 const moreMenuItems = [
   { label: 'Transactions', href: '/transactions' },
   { label: 'Withdrawals', href: '/withdrawals' },
+  { label: 'Reports', href: '/reports' },
+  { label: 'Activity', href: '/activity' },
   { label: 'Settings', href: '/settings' },
   { label: 'Integration', href: '/integration' },
 ];
