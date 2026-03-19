@@ -33,15 +33,14 @@ router.use('/rates', ratesRoutes);        // Public — no auth needed
 router.use('/discounts', discountRoutes);
 router.use('/whitelabel', whiteLabelRoutes);
 
-// Health check
+// Health check — SECURITY: Do not expose server uptime or exact version
+// to unauthenticated users as it aids timing/reconnaissance attacks.
 router.get('/health', (_req, res) => {
   res.status(200).json({
     success: true,
     data: {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      version: '2.0.0',
     },
   });
 });

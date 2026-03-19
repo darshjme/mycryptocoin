@@ -2,16 +2,23 @@
 
 import React, { useState } from 'react';
 
-const todayActivities = [
-  { initials: 'KH', color: 'bg-indigo-500', text: '<strong>API Key</strong> rotated for production environment', time: 'Mar 19, 2026 - 10:30 AM' },
-  { initials: 'SY', color: 'bg-pink-500', text: '<strong class="text-pink-400">[ALERT]</strong> Unusual payment volume detected from IP <strong class="text-pink-400">203.0.113.42</strong>', time: 'Mar 19, 2026 - 09:15 AM' },
-  { initials: 'WH', color: 'bg-emerald-500', text: '<strong>Webhook</strong> endpoint updated: <strong class="text-indigo-400">https://yoursite.com/webhook</strong>', time: 'Mar 19, 2026 - 08:45 AM' },
-  { initials: 'WD', color: 'bg-amber-500', text: 'Withdrawal of <strong>0.5 BTC</strong> to <strong class="text-red-400">bc1q...a7f3</strong> completed', time: 'Mar 19, 2026 - 08:00 AM' },
+interface ActivityItem {
+  initials: string;
+  color: string;
+  segments: Array<{ text: string; bold?: boolean; className?: string }>;
+  time: string;
+}
+
+const todayActivities: ActivityItem[] = [
+  { initials: 'KH', color: 'bg-indigo-500', segments: [{ text: 'API Key', bold: true }, { text: ' rotated for production environment' }], time: 'Mar 19, 2026 - 10:30 AM' },
+  { initials: 'SY', color: 'bg-pink-500', segments: [{ text: '[ALERT]', bold: true, className: 'text-pink-400' }, { text: ' Unusual payment volume detected from IP ' }, { text: '203.0.113.42', bold: true, className: 'text-pink-400' }], time: 'Mar 19, 2026 - 09:15 AM' },
+  { initials: 'WH', color: 'bg-emerald-500', segments: [{ text: 'Webhook', bold: true }, { text: ' endpoint updated: ' }, { text: 'https://yoursite.com/webhook', bold: true, className: 'text-indigo-400' }], time: 'Mar 19, 2026 - 08:45 AM' },
+  { initials: 'WD', color: 'bg-amber-500', segments: [{ text: 'Withdrawal of ' }, { text: '0.5 BTC', bold: true }, { text: ' to ' }, { text: 'bc1q...a7f3', bold: true, className: 'text-red-400' }, { text: ' completed' }], time: 'Mar 19, 2026 - 08:00 AM' },
 ];
 
-const yesterdayActivities = [
-  { initials: 'PY', color: 'bg-purple-500', text: 'New <strong>payment</strong> received: <strong class="text-indigo-400">$2,450.00</strong> in ETH', time: 'Mar 18, 2026 - 11:30 PM' },
-  { initials: 'ST', color: 'bg-blue-500', text: '2FA authentication <strong>enabled</strong> for your account', time: 'Mar 18, 2026 - 04:15 PM' },
+const yesterdayActivities: ActivityItem[] = [
+  { initials: 'PY', color: 'bg-purple-500', segments: [{ text: 'New ' }, { text: 'payment', bold: true }, { text: ' received: ' }, { text: '$2,450.00', bold: true, className: 'text-indigo-400' }, { text: ' in ETH' }], time: 'Mar 18, 2026 - 11:30 PM' },
+  { initials: 'ST', color: 'bg-blue-500', segments: [{ text: '2FA authentication ' }, { text: 'enabled', bold: true }, { text: ' for your account' }], time: 'Mar 18, 2026 - 04:15 PM' },
 ];
 
 export default function ActivityPage() {
@@ -47,7 +54,15 @@ export default function ActivityPage() {
                 {activity.initials}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-300" dangerouslySetInnerHTML={{ __html: activity.text }} />
+                <p className="text-sm text-slate-300">
+                  {activity.segments.map((seg, j) =>
+                    seg.bold ? (
+                      <strong key={j} className={seg.className}>{seg.text}</strong>
+                    ) : (
+                      <span key={j}>{seg.text}</span>
+                    )
+                  )}
+                </p>
               </div>
               <span className="text-[10px] text-slate-600 whitespace-nowrap flex-shrink-0">{activity.time}</span>
             </div>
@@ -62,7 +77,15 @@ export default function ActivityPage() {
                 {activity.initials}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-300" dangerouslySetInnerHTML={{ __html: activity.text }} />
+                <p className="text-sm text-slate-300">
+                  {activity.segments.map((seg, j) =>
+                    seg.bold ? (
+                      <strong key={j} className={seg.className}>{seg.text}</strong>
+                    ) : (
+                      <span key={j}>{seg.text}</span>
+                    )
+                  )}
+                </p>
               </div>
               <span className="text-[10px] text-slate-600 whitespace-nowrap flex-shrink-0">{activity.time}</span>
             </div>

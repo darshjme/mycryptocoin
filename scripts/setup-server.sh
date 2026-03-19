@@ -325,6 +325,20 @@ echo "Kernel parameters tuned"
 # 11. SSL setup with Let's Encrypt
 # ---------------------------------------------------------------------------
 
+log "Generating DH parameters for Nginx (this takes a few minutes)"
+
+if [ ! -f /etc/nginx/dhparam.pem ]; then
+  mkdir -p /etc/nginx
+  openssl dhparam -out /etc/nginx/dhparam.pem 4096
+  echo "DH parameters generated"
+else
+  echo "DH parameters already exist"
+fi
+
+# ---------------------------------------------------------------------------
+# 12. SSL setup with Let's Encrypt
+# ---------------------------------------------------------------------------
+
 log "Setting up SSL with Let's Encrypt"
 
 if [ -n "$DOMAIN" ] && [ "$DOMAIN" != "api.mycryptocoin.com" ]; then

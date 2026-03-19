@@ -130,7 +130,7 @@
 				}
 			}
 
-			// Use QRCode library if available, otherwise show a server-generated image.
+			// Use QRCode library if available, otherwise show the address as text.
 			if (typeof QRCode !== 'undefined') {
 				new QRCode($container[0], {
 					text: uri,
@@ -141,9 +141,8 @@
 					correctLevel: QRCode.CorrectLevel.M
 				});
 			} else {
-				// Fallback: use Google Charts QR API (no external JS dependency).
-				var imgUrl = 'https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=' + encodeURIComponent(uri) + '&choe=UTF-8';
-				$container.html('<img src="' + imgUrl + '" alt="QR Code" width="200" height="200" />');
+				// Fallback: display the address as copyable text (no external API calls).
+				$container.html('<p style="font-size:13px;color:#718096;padding:20px;">QR code library not loaded. Please copy the address below.</p>');
 			}
 		},
 
@@ -250,12 +249,13 @@
 			// Remove all status classes.
 			$statusEl.removeClass('mycryptocoin-status--pending mycryptocoin-status--confirming mycryptocoin-status--confirmed mycryptocoin-status--failed mycryptocoin-status--expired');
 
+			var i18n = mycryptocoinCheckout.i18n || {};
 			var statusLabels = {
-				'pending': 'Waiting for payment...',
-				'confirming': 'Payment detected, confirming...',
-				'confirmed': 'Payment confirmed!',
-				'failed': 'Payment failed',
-				'expired': 'Payment expired'
+				'pending': i18n.statusPending || 'Waiting for payment...',
+				'confirming': i18n.statusConfirming || 'Payment detected, confirming...',
+				'confirmed': i18n.statusConfirmed || 'Payment confirmed!',
+				'failed': i18n.statusFailed || 'Payment failed',
+				'expired': i18n.statusExpired || 'Payment expired'
 			};
 
 			var label = statusLabels[status] || status;

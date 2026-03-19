@@ -667,6 +667,17 @@ class MyCryptoCoin_Gateway extends WC_Payment_Gateway {
 				'nonce'      => wp_create_nonce( 'wp_rest' ),
 				'gatewayId'  => $this->id,
 				'testMode'   => $this->test_mode,
+				'i18n'       => array(
+					'statusPending'    => __( 'Waiting for payment...', 'mycryptocoin-gateway' ),
+					'statusConfirming' => __( 'Payment detected, confirming...', 'mycryptocoin-gateway' ),
+					'statusConfirmed'  => __( 'Payment confirmed!', 'mycryptocoin-gateway' ),
+					'statusFailed'     => __( 'Payment failed', 'mycryptocoin-gateway' ),
+					'statusExpired'    => __( 'Payment expired', 'mycryptocoin-gateway' ),
+					'timeRemaining'    => __( 'Time remaining:', 'mycryptocoin-gateway' ),
+					'timerExpired'     => __( 'Payment window expired', 'mycryptocoin-gateway' ),
+					'copied'           => __( 'Copied!', 'mycryptocoin-gateway' ),
+					'qrFallback'       => __( 'QR code library not loaded. Please copy the address below.', 'mycryptocoin-gateway' ),
+				),
 			)
 		);
 	}

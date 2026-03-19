@@ -90,18 +90,27 @@ export class ConversionService {
       // Cache in Redis
       await redis.setex(cacheKey, RATE_CACHE_TTL, rate.toString());
 
-      // Also store as fallback (no TTL)
+      // Store as fallback with timestamp for max-age enforcement
       await redis.set(`${RATE_CACHE_PREFIX}${symbol}_USDT:fallback`, rate.toString());
+      await redis.set(`${RATE_CACHE_PREFIX}${symbol}_USDT:fallback_ts`, Date.now().toString());
 
       logger.info(`Exchange rate fetched: 1 ${symbol} = ${rate} USDT`);
       return rate;
     } catch (error) {
       logger.error(`Failed to fetch exchange rate for ${symbol}`, { error });
 
-      // Fallback to last known rate
+      // Fallback to last known rate — but enforce max age
       const fallback = await redis.get(`${RATE_CACHE_PREFIX}${symbol}_USDT:fallback`);
+      const fallbackTs = await redis.get(`${RATE_CACHE_PREFIX}${symbol}_USDT:fallback_ts`);
       if (fallback) {
-        logger.warn(`Using fallback exchange rate for ${symbol}: ${fallback} USDT`);
+        const age = fallbackTs ? (Date.now() - parseInt(fallbackTs, 10)) / 1000 : Infinity;
+        if (age > FALLBACK_MAX_AGE_SECONDS) {
+          logger.error(
+            `Fallback rate for ${symbol} is ${age.toFixed(0)}s old (max ${FALLBACK_MAX_AGE_SECONDS}s) — refusing to use stale rate`,
+          );
+          throw new Error(`Exchange rate for ${symbol} is stale (${age.toFixed(0)}s old). Cannot safely convert.`);
+        }
+        logger.warn(`Using fallback exchange rate for ${symbol}: ${fallback} USDT (age: ${age.toFixed(0)}s)`);
         return new Decimal(fallback);
       }
 
