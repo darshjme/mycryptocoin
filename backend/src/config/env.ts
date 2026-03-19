@@ -8,7 +8,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
 
   // Database
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.string(),
 
   // Redis
   REDIS_URL: z.string().default('redis://localhost:6379'),
@@ -19,12 +19,12 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
-  // SMTP
-  SMTP_HOST: z.string(),
+  // SMTP (names aligned with .env.example)
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_USER: z.string(),
-  SMTP_PASS: z.string(),
-  SMTP_FROM: z.string().email(),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  SMTP_FROM: z.string().default('noreply@mycrypto.co.in'),
 
   // WhatsApp (Baileys)
   WHATSAPP_ENABLED: z.coerce.boolean().default(true),
@@ -42,7 +42,7 @@ const envSchema = z.object({
   XRP_RPC_URL: z.string().default('https://s1.ripple.com:51234'),
 
   // HD Wallet master seed (encrypted in production)
-  HD_MASTER_SEED: z.string().min(32),
+  HD_MASTER_SEED: z.string().default('0'.repeat(64)),
 
   // Fee configuration
   PLATFORM_FEE_PERCENT: z.coerce.number().default(0.5),

@@ -16,71 +16,60 @@ Every API response includes rate limit information in the headers:
 
 ---
 
-## Default Limits by Endpoint
+## Default Limits
 
-Rate limit windows are 1 minute unless otherwise noted.
+The API uses three rate limit tiers. All windows are **1 minute**.
 
-### Authentication Endpoints
+### Tier 1: Strict (5 requests/minute per IP)
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `POST /auth/register` | 5 | 1 hour |
-| `POST /auth/login` | 20 | 1 minute |
-| `POST /auth/verify-otp` | 10 | 1 minute |
-| `POST /auth/refresh` | 30 | 1 minute |
-| `POST /auth/forgot-password` | 5 | 1 hour |
-| `POST /auth/reset-password` | 5 | 1 hour |
-
-### Payment Endpoints
+Applies to sensitive authentication endpoints:
 
 | Endpoint | Limit | Window |
 |----------|-------|--------|
-| `POST /payments` | 100 | 1 minute |
-| `GET /payments` | 300 | 1 minute |
-| `GET /payments/{id}` | 300 | 1 minute |
-| `POST /payments/{id}/verify` | 60 | 1 minute |
+| `POST /auth/register` | 5 | 1 minute |
+| `POST /auth/login` | 5 | 1 minute |
+| `POST /auth/verify-whatsapp-otp` | 5 | 1 minute |
+| `POST /auth/forgot-password` | 5 | 1 minute |
+| `POST /auth/reset-password` | 5 | 1 minute |
 
-### Wallet Endpoints
+Keyed by IP address.
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `GET /wallets` | 300 | 1 minute |
-| `GET /wallets/{crypto}` | 300 | 1 minute |
-| `PUT /wallets/{crypto}/auto-withdraw` | 10 | 1 minute |
+### Tier 2: Public (20 requests/minute per IP)
 
-### Withdrawal Endpoints
+Applies globally to all `/auth/*` routes as an outer rate limit:
 
 | Endpoint | Limit | Window |
 |----------|-------|--------|
-| `POST /withdrawals` | 30 | 1 minute |
-| `GET /withdrawals` | 300 | 1 minute |
-| `GET /withdrawals/{id}` | 300 | 1 minute |
+| All `/auth/*` endpoints | 20 | 1 minute |
 
-### Transaction Endpoints
+Keyed by IP address.
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `GET /transactions` | 300 | 1 minute |
+### Tier 3: Authenticated (100 requests/minute per identity)
 
-### Webhook Endpoints
+Applies to all authenticated endpoints (payments, wallets, webhooks, merchant, transactions):
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `POST /webhooks` | 10 | 1 minute |
-| `GET /webhooks` | 300 | 1 minute |
-| `PUT /webhooks/{id}` | 10 | 1 minute |
-| `DELETE /webhooks/{id}` | 10 | 1 minute |
-| `POST /webhooks/{id}/test` | 10 | 1 minute |
+| Endpoints | Limit | Window |
+|-----------|-------|--------|
+| `POST /payments/create` | 100 | 1 minute |
+| `GET /payments` | 100 | 1 minute |
+| `GET /payments/{id}` | 100 | 1 minute |
+| `POST /payments/{id}/verify` | 100 | 1 minute |
+| `GET /wallets` | 100 | 1 minute |
+| `GET /wallets/{crypto}` | 100 | 1 minute |
+| `PUT /wallets/{crypto}/auto-withdraw` | 100 | 1 minute |
+| `POST /wallets/{crypto}/withdraw` | 100 | 1 minute |
+| `GET /transactions` | 100 | 1 minute |
+| `POST /webhooks` | 100 | 1 minute |
+| `GET /webhooks` | 100 | 1 minute |
+| `PUT /webhooks/{id}` | 100 | 1 minute |
+| `DELETE /webhooks/{id}` | 100 | 1 minute |
+| `GET /merchant/profile` | 100 | 1 minute |
+| `PUT /merchant/profile` | 100 | 1 minute |
+| `POST /merchant/api-keys` | 100 | 1 minute |
+| `GET /merchant/api-keys` | 100 | 1 minute |
+| `DELETE /merchant/api-keys/{id}` | 100 | 1 minute |
 
-### Merchant Endpoints
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `GET /merchant/profile` | 300 | 1 minute |
-| `PUT /merchant/profile` | 10 | 1 minute |
-| `POST /merchant/api-keys` | 10 | 1 minute |
-| `GET /merchant/api-keys` | 300 | 1 minute |
-| `DELETE /merchant/api-keys/{id}` | 10 | 1 minute |
+Keyed by API key (first 20 chars) or merchant ID (for JWT auth), falling back to IP address.
 
 ---
 
@@ -90,12 +79,11 @@ When you exceed a rate limit, the API returns `429 Too Many Requests`:
 
 ```json
 {
+  "success": false,
   "error": {
-    "code": "rate_limit_exceeded",
-    "message": "Too many requests. Retry after 30 seconds.",
-    "details": {
-      "retry_after": 30
-    }
+    "code": "RATE_LIMIT",
+    "message": "Too many requests. Please try again later.",
+    "retryAfter": 60
   }
 }
 ```
@@ -107,8 +95,10 @@ HTTP/1.1 429 Too Many Requests
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 0
 X-RateLimit-Reset: 1742385600
-Retry-After: 30
+Retry-After: 60
 ```
+
+> **Note:** The `retryAfter` value is always 60 seconds (the window duration). The strict limiter returns a different message: "Too many attempts. Please wait before trying again."
 
 ---
 

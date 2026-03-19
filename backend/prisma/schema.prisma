@@ -39,42 +39,19 @@ enum KycStatus {
   ADDITIONAL_INFO_REQUIRED
 }
 
-enum CryptoNetwork {
-  BITCOIN
-  ETHEREUM
-  SOLANA
-  TRON
-  LITECOIN
-  BSC
-  POLYGON
-  DOGECOIN
-  XRPL
-}
-
-enum TokenSymbol {
-  BTC
-  ETH
-  SOL
-  LTC
-  USDT
-  USDC
-  TRX
-  BNB
-  MATIC
-  DOGE
-  XRP
-  USDT_ERC20
-  USDT_TRC20
-}
-
 enum PaymentStatus {
-  AWAITING_PAYMENT
-  UNDERPAID
-  PAID
-  OVERPAID
+  PENDING
+  CONFIRMING
+  CONFIRMED
+  COMPLETED
   EXPIRED
   CANCELLED
+  FAILED
   REFUNDED
+  AWAITING_PAYMENT
+  UNDERPAID
+  OVERPAID
+  PAID
 }
 
 enum TransactionType {
@@ -134,87 +111,78 @@ enum SweepStatus {
 }
 
 // ──────────────────────────────────────────────
-// Core Models (original 14 + security/compliance)
+// Core Models
 // ──────────────────────────────────────────────
 
-model User {
-  id               String    @id @default(uuid()) @db.Uuid
-  email            String    @unique @db.VarChar(255)
-  passwordHash     String    @map("password_hash") @db.VarChar(255)
-  role             UserRole  @default(MERCHANT)
-  isEmailVerified  Boolean   @default(false) @map("is_email_verified")
-  twoFactorEnabled Boolean   @default(false) @map("two_factor_enabled")
-  twoFactorSecret  String?   @map("two_factor_secret") @db.VarChar(255)
-  kycStatus        KycStatus @default(NOT_STARTED) @map("kyc_status")
-  lastLoginAt      DateTime? @map("last_login_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-
-  merchant    Merchant?
-  otpCodes    OtpCode[]
-  auditLogs   AuditLog[]    @relation("UserAuditLogs")
-  ipWhitelist IpWhitelist[]
-
-  @@index([email])
-  @@index([role])
-  @@map("users")
-}
-
+/// Unified merchant model — auth + business data.
+/// The entire backend uses this as the primary identity.
 model Merchant {
-  id                 String    @id @default(uuid()) @db.Uuid
-  userId             String    @unique @map("user_id") @db.Uuid
-  email              String?   @db.VarChar(255)
-  businessName       String    @map("business_name") @db.VarChar(255)
-  businessUrl        String?   @map("business_url") @db.VarChar(512)
-  logoUrl            String?   @map("logo_url") @db.VarChar(512)
-  callbackUrl        String?   @map("callback_url") @db.VarChar(512)
-  webhookSecret      String    @map("webhook_secret") @db.VarChar(255)
-  isActive           Boolean   @default(true) @map("is_active")
-  dailyVolumeLimit   Decimal   @default(10000) @map("daily_volume_limit") @db.Decimal(20, 8)
-  monthlyVolumeLimit Decimal   @default(100000) @map("monthly_volume_limit") @db.Decimal(20, 8)
+  id                      String    @id @default(uuid()) @db.Uuid
+  email                   String    @unique @db.VarChar(255)
+  passwordHash            String    @map("password_hash") @db.VarChar(255)
+  businessName            String    @map("business_name") @db.VarChar(255)
+  phone                   String?   @db.VarChar(20)
+  whatsappNumber          String?   @map("whatsapp_number") @db.VarChar(20)
+  country                 String?   @db.VarChar(2)
+  website                 String?   @db.VarChar(512)
+  logoUrl                 String?   @map("logo_url") @db.VarChar(512)
+  callbackUrl             String?   @map("callback_url") @db.VarChar(512)
+  role                    UserRole  @default(MERCHANT)
+  isActive                Boolean   @default(false) @map("is_active")
+  isEmailVerified         Boolean   @default(false) @map("is_email_verified")
+  isPhoneVerified         Boolean   @default(false) @map("is_phone_verified")
+  twoFactorEnabled        Boolean   @default(false) @map("two_factor_enabled")
+  twoFactorSecret         String?   @map("two_factor_secret") @db.VarChar(255)
+  kycStatus               KycStatus @default(NOT_STARTED) @map("kyc_status")
+  notificationPreferences Json?     @map("notification_preferences")
+  dailyVolumeLimit        Decimal   @default(10000) @map("daily_volume_limit") @db.Decimal(20, 8)
+  monthlyVolumeLimit      Decimal   @default(100000) @map("monthly_volume_limit") @db.Decimal(20, 8)
 
   // KYC / Compliance tier fields
-  kycTier            Int       @default(0) @map("kyc_tier")
-  kycStatus          String?   @map("merchant_kyc_status") @db.VarChar(50)
-  kycExpiresAt       DateTime? @map("kyc_expires_at")
+  kycTier                 Int       @default(0) @map("kyc_tier")
+  kycExpiresAt            DateTime? @map("kyc_expires_at")
 
   // Freeze fields (emergency & fraud)
-  isFrozen           Boolean   @default(false) @map("is_frozen")
-  frozenAt           DateTime? @map("frozen_at")
-  frozenBy           String?   @map("frozen_by") @db.Uuid
-  frozenReason       String?   @map("frozen_reason") @db.Text
+  isFrozen                Boolean   @default(false) @map("is_frozen")
+  frozenAt                DateTime? @map("frozen_at")
+  frozenBy                String?   @map("frozen_by") @db.Uuid
+  frozenReason            String?   @map("frozen_reason") @db.Text
 
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  lastLoginAt             DateTime? @map("last_login_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiKeys           ApiKey[]
-  wallets           Wallet[]
-  payments          Payment[]
-  withdrawals       Withdrawal[]
-  whatsappSessions  WhatsAppSession[]
-  webhookEndpoints  WebhookEndpoint[]
-  feeRecords        FeeRecord[]
-  auditLogs         AuditLog[]         @relation("MerchantAuditLogs")
-  fraudAlerts       FraudAlert[]
-  kycSubmissions    KycSubmission[]
+  apiKeys          ApiKey[]
+  wallets          Wallet[]
+  payments         Payment[]
+  withdrawals      Withdrawal[]
+  webhooks         Webhook[]
+  whatsappSessions WhatsAppSession[]
+  feeRecords       FeeRecord[]
+  auditLogs        AuditLog[]
+  fraudAlerts      FraudAlert[]
+  kycSubmissions   KycSubmission[]
 
-  @@index([userId])
+  @@index([email])
+  @@index([phone])
+  @@index([role])
   @@index([isActive])
   @@index([isFrozen])
   @@index([kycTier])
-  @@index([kycExpiresAt])
   @@map("merchants")
 }
 
 model ApiKey {
   id          String    @id @default(uuid()) @db.Uuid
   merchantId  String    @map("merchant_id") @db.Uuid
+  name        String    @db.VarChar(100)
   keyHash     String    @map("key_hash") @db.VarChar(255)
-  label       String    @db.VarChar(100)
-  prefix      String    @db.VarChar(16)
+  keyPrefix   String    @map("key_prefix") @db.VarChar(16)
+  mode        String    @db.VarChar(10) // 'live' | 'test'
   permissions String[]  @default(["payments:read", "payments:write"])
+  ipWhitelist String[]  @default([]) @map("ip_whitelist")
   isActive    Boolean   @default(true) @map("is_active")
+  revokedAt   DateTime? @map("revoked_at")
   lastUsedAt  DateTime? @map("last_used_at")
   expiresAt   DateTime? @map("expires_at")
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -222,168 +190,116 @@ model ApiKey {
   merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
   @@index([merchantId])
-  @@index([prefix])
+  @@index([keyPrefix])
   @@index([keyHash])
   @@map("api_keys")
 }
 
 model Wallet {
-  id             String        @id @default(uuid()) @db.Uuid
-  merchantId     String        @map("merchant_id") @db.Uuid
-  network        CryptoNetwork
-  token          TokenSymbol
-  crypto         String        @default("") @db.VarChar(20)
-  balance        Decimal       @default(0) @db.Decimal(30, 18)
-  pendingBalance Decimal       @default(0) @map("pending_balance") @db.Decimal(30, 18)
-  totalReceived  Decimal       @default(0) @map("total_received") @db.Decimal(30, 18)
-  totalWithdrawn Decimal       @default(0) @map("total_withdrawn") @db.Decimal(30, 18)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id                    String   @id @default(uuid()) @db.Uuid
+  merchantId            String   @map("merchant_id") @db.Uuid
+  crypto                String   @db.VarChar(20)
+  address               String   @db.VarChar(255)
+  publicKey             String?  @map("public_key") @db.VarChar(255)
+  derivationPath        String?  @map("derivation_path") @db.VarChar(100)
+  derivationIndex       Int?     @map("derivation_index")
+  balance               Decimal  @default(0) @db.Decimal(30, 18)
+  pendingBalance        Decimal  @default(0) @map("pending_balance") @db.Decimal(30, 18)
+  totalReceived         Decimal  @default(0) @map("total_received") @db.Decimal(30, 18)
+  totalWithdrawn        Decimal  @default(0) @map("total_withdrawn") @db.Decimal(30, 18)
+  autoWithdrawEnabled   Boolean  @default(false) @map("auto_withdraw_enabled")
+  autoWithdrawAddress   String?  @map("auto_withdraw_address") @db.VarChar(255)
+  autoWithdrawThreshold Decimal? @map("auto_withdraw_threshold") @db.Decimal(30, 18)
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
-  merchant       Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  addresses      CryptoAddress[]
-  transactions   Transaction[]
-  withdrawals    Withdrawal[]
+  merchant    Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+  withdrawals Withdrawal[]
 
-  @@unique([merchantId, network, token])
+  @@unique([merchantId, crypto])
   @@index([merchantId])
   @@index([crypto])
   @@map("wallets")
 }
 
-model CryptoAddress {
-  id              String        @id @default(uuid()) @db.Uuid
-  walletId        String        @map("wallet_id") @db.Uuid
-  paymentId       String?       @map("payment_id") @db.Uuid
-  network         CryptoNetwork
-  address         String        @db.VarChar(255)
-  derivationPath  String?       @map("derivation_path") @db.VarChar(100)
-  derivationIndex Int?          @map("derivation_index")
-  isUsed          Boolean       @default(false) @map("is_used")
-  createdAt       DateTime      @default(now()) @map("created_at")
-
-  wallet  Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  payment Payment? @relation(fields: [paymentId], references: [id])
-
-  @@unique([network, address])
-  @@index([walletId])
-  @@index([paymentId])
-  @@index([address])
-  @@map("crypto_addresses")
-}
-
 model Payment {
-  id                String        @id @default(uuid()) @db.Uuid
-  merchantId        String        @map("merchant_id") @db.Uuid
-  externalId        String?       @map("external_id") @db.VarChar(255)
-  network           CryptoNetwork
-  token             TokenSymbol
-  requestedAmount   Decimal       @map("requested_amount") @db.Decimal(20, 8)
-  requestedCurrency String        @default("USD") @map("requested_currency") @db.VarChar(10)
-  cryptoAmount      Decimal       @map("crypto_amount") @db.Decimal(30, 18)
-  receivedAmount    Decimal       @default(0) @map("received_amount") @db.Decimal(30, 18)
-  exchangeRate      Decimal       @map("exchange_rate") @db.Decimal(20, 8)
-  fee               Decimal       @default(0) @db.Decimal(30, 18)
-  feeRate           Decimal       @default(0.005) @map("fee_rate") @db.Decimal(10, 6)
-  status            PaymentStatus @default(AWAITING_PAYMENT)
-  depositAddress    String        @map("deposit_address") @db.VarChar(255)
-  customerEmail     String?       @map("customer_email") @db.VarChar(255)
-  metadata          Json?
-  callbackUrl       String?       @map("callback_url") @db.VarChar(512)
-  expiresAt         DateTime      @map("expires_at")
-  paidAt            DateTime?     @map("paid_at")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
+  id                    String        @id @db.VarChar(64)
+  merchantId            String        @map("merchant_id") @db.Uuid
+  walletId              String?       @map("wallet_id") @db.Uuid
+  crypto                String        @db.VarChar(20)
+  amount                Decimal       @db.Decimal(30, 18)
+  currency              String        @default("USD") @db.VarChar(10)
+  description           String?       @db.VarChar(500)
+  orderId               String?       @map("order_id") @db.VarChar(100)
+  customerEmail         String?       @map("customer_email") @db.VarChar(255)
+  customerName          String?       @map("customer_name") @db.VarChar(200)
+  callbackUrl           String?       @map("callback_url") @db.VarChar(512)
+  redirectUrl           String?       @map("redirect_url") @db.VarChar(512)
+  depositAddress        String        @map("deposit_address") @db.VarChar(255)
+  derivationPath        String?       @map("derivation_path") @db.VarChar(100)
+  txHash                String?       @map("tx_hash") @db.VarChar(255)
+  confirmations         Int           @default(0)
+  confirmationsRequired Int           @map("confirmations_required")
+  detectedAmount        Decimal?      @map("detected_amount") @db.Decimal(30, 18)
+  feeAmount             Decimal?      @map("fee_amount") @db.Decimal(30, 18)
+  netAmount             Decimal?      @map("net_amount") @db.Decimal(30, 18)
+  status                PaymentStatus @default(PENDING)
+  metadata              Json?
+  expiresAt             DateTime      @map("expires_at")
+  completedAt           DateTime?     @map("completed_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
 
-  merchant      Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  addresses     CryptoAddress[]
-  transactions  Transaction[]
-  feeRecord     FeeRecord?
+  merchant  Merchant   @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  wallet    Wallet?    @relation(fields: [walletId], references: [id])
+  feeRecord FeeRecord?
 
   @@index([merchantId])
-  @@index([externalId])
+  @@index([orderId])
   @@index([status])
   @@index([depositAddress])
+  @@index([crypto])
   @@index([createdAt])
   @@map("payments")
 }
 
-model Transaction {
-  id                    String            @id @default(uuid()) @db.Uuid
-  paymentId             String?           @map("payment_id") @db.Uuid
-  withdrawalId          String?           @map("withdrawal_id") @db.Uuid
-  walletId              String            @map("wallet_id") @db.Uuid
-  network               CryptoNetwork
-  token                 TokenSymbol
-  type                  TransactionType?
-  txHash                String            @map("tx_hash") @db.VarChar(255)
-  fromAddress           String            @map("from_address") @db.VarChar(255)
-  toAddress             String            @map("to_address") @db.VarChar(255)
-  amount                Decimal           @db.Decimal(30, 18)
-  fee                   Decimal           @default(0) @db.Decimal(30, 18)
-  confirmations         Int               @default(0)
-  requiredConfirmations Int               @map("required_confirmations")
-  status                TransactionStatus @default(PENDING)
-  blockNumber           BigInt?           @map("block_number")
-  blockHash             String?           @map("block_hash") @db.VarChar(255)
-  rawData               Json?             @map("raw_data")
-  confirmedAt           DateTime?         @map("confirmed_at")
-  createdAt             DateTime          @default(now()) @map("created_at")
-  updatedAt             DateTime          @updatedAt @map("updated_at")
-
-  payment    Payment?    @relation(fields: [paymentId], references: [id])
-  withdrawal Withdrawal? @relation(fields: [withdrawalId], references: [id])
-  wallet     Wallet      @relation(fields: [walletId], references: [id])
-
-  @@unique([network, txHash])
-  @@index([paymentId])
-  @@index([withdrawalId])
-  @@index([walletId])
-  @@index([txHash])
-  @@index([status])
-  @@index([createdAt])
-  @@map("transactions")
-}
-
 model Withdrawal {
-  id                  String           @id @default(uuid()) @db.Uuid
-  merchantId          String           @map("merchant_id") @db.Uuid
-  walletId            String           @map("wallet_id") @db.Uuid
-  network             CryptoNetwork
-  token               TokenSymbol
-  crypto              String           @default("") @db.VarChar(20)
-  amount              Decimal          @db.Decimal(30, 18)
-  amountUsd           Decimal?         @map("amount_usd") @db.Decimal(20, 8)
-  fee                 Decimal          @default(0) @db.Decimal(30, 18)
-  estimatedFee        Decimal?         @map("estimated_fee") @db.Decimal(30, 18)
-  netAmount           Decimal          @map("net_amount") @db.Decimal(30, 18)
-  toAddress           String           @map("to_address") @db.VarChar(255)
-  memo                String?          @db.VarChar(255)
-  txHash              String?          @map("tx_hash") @db.VarChar(255)
-  type                String           @default("manual") @db.VarChar(20)
-  status              WithdrawalStatus @default(PENDING)
+  id              String           @id @db.VarChar(64)
+  merchantId      String           @map("merchant_id") @db.Uuid
+  walletId        String           @map("wallet_id") @db.Uuid
+  crypto          String           @db.VarChar(20)
+  amount          Decimal          @db.Decimal(30, 18)
+  toAddress       String           @map("to_address") @db.VarChar(255)
+  memo            String?          @db.VarChar(255)
+  estimatedFee    Decimal?         @map("estimated_fee") @db.Decimal(30, 18)
+  networkFee      Decimal?         @map("network_fee") @db.Decimal(30, 18)
+  txHash          String?          @map("tx_hash") @db.VarChar(255)
+  status          WithdrawalStatus @default(PENDING)
+  type            String           @default("manual") @db.VarChar(20)
+  error           String?          @db.Text
+  completedAt     DateTime?        @map("completed_at")
 
   // Multi-sig approval fields
-  approvalStatus      ApprovalStatus?  @map("approval_status")
-  requiredApprovals   Int?             @map("required_approvals")
-  currentApprovals    Int?             @default(0) @map("current_approvals")
-  coolingEndsAt       DateTime?        @map("cooling_ends_at")
-  approvedAt          DateTime?        @map("approved_at")
-  rejectedAt          DateTime?        @map("rejected_at")
-  rejectionReason     String?          @map("rejection_reason") @db.Text
+  approvalStatus    ApprovalStatus? @map("approval_status")
+  requiredApprovals Int?            @map("required_approvals")
+  currentApprovals  Int?            @default(0) @map("current_approvals")
+  coolingEndsAt     DateTime?       @map("cooling_ends_at")
+  approvedAt        DateTime?       @map("approved_at")
+  rejectedAt        DateTime?       @map("rejected_at")
+  rejectionReason   String?         @map("rejection_reason") @db.Text
+  amountUsd         Decimal?        @map("amount_usd") @db.Decimal(20, 8)
 
-  // Legacy review fields
-  reviewedBy          String?          @map("reviewed_by") @db.Uuid
-  reviewNote          String?          @map("review_note") @db.Text
+  reviewedBy      String?          @map("reviewed_by") @db.Uuid
+  reviewNote      String?          @map("review_note") @db.Text
 
-  processedAt         DateTime?        @map("processed_at")
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
+  processedAt     DateTime?        @map("processed_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  merchant              Merchant              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  wallet                Wallet                @relation(fields: [walletId], references: [id])
-  transactions          Transaction[]
-  withdrawalApprovals   WithdrawalApproval[]
+  merchant            Merchant             @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  wallet              Wallet               @relation(fields: [walletId], references: [id])
+  withdrawalApprovals WithdrawalApproval[]
 
   @@index([merchantId])
   @@index([walletId])
@@ -395,14 +311,14 @@ model Withdrawal {
 }
 
 model WhatsAppSession {
-  id           String   @id @default(uuid()) @db.Uuid
-  merchantId   String   @map("merchant_id") @db.Uuid
-  phoneNumber  String   @map("phone_number") @db.VarChar(20)
-  sessionData  Json?    @map("session_data")
-  isConnected  Boolean  @default(false) @map("is_connected")
+  id           String    @id @default(uuid()) @db.Uuid
+  merchantId   String    @map("merchant_id") @db.Uuid
+  phoneNumber  String    @map("phone_number") @db.VarChar(20)
+  sessionData  Json?     @map("session_data")
+  isConnected  Boolean   @default(false) @map("is_connected")
   lastActiveAt DateTime? @map("last_active_at")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
@@ -420,54 +336,54 @@ model OtpCode {
   expiresAt DateTime   @map("expires_at")
   createdAt DateTime   @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId])
   @@index([code, purpose])
   @@index([expiresAt])
   @@map("otp_codes")
 }
 
-model WebhookEndpoint {
-  id         String   @id @default(uuid()) @db.Uuid
-  merchantId String   @map("merchant_id") @db.Uuid
-  url        String   @db.VarChar(512)
-  secret     String   @db.VarChar(255)
-  events     String[] @default(["payment.completed"])
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+/// Webhook endpoint registered by a merchant.
+model Webhook {
+  id              String            @id @default(uuid()) @db.Uuid
+  merchantId      String            @map("merchant_id") @db.Uuid
+  url             String            @db.VarChar(512)
+  secret          String            @db.VarChar(255)
+  events          String[]          @default(["payment.completed"])
+  isActive        Boolean           @default(true) @map("is_active")
+  failureCount    Int               @default(0) @map("failure_count")
+  lastDeliveredAt DateTime?         @map("last_delivered_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  merchant Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  logs     WebhookLog[]
+  merchant   Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
 
   @@index([merchantId])
-  @@map("webhook_endpoints")
+  @@map("webhooks")
 }
 
-model WebhookLog {
-  id             String    @id @default(uuid()) @db.Uuid
-  endpointId     String    @map("endpoint_id") @db.Uuid
-  event          String    @db.VarChar(100)
-  payload        Json
-  responseStatus Int?      @map("response_status")
-  responseBody   String?   @map("response_body") @db.Text
-  attempts       Int       @default(1)
-  nextRetryAt    DateTime? @map("next_retry_at")
-  deliveredAt    DateTime? @map("delivered_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
+/// Log of individual webhook delivery attempts.
+model WebhookDelivery {
+  id         String   @id @default(uuid()) @db.Uuid
+  webhookId  String   @map("webhook_id") @db.Uuid
+  event      String   @db.VarChar(100)
+  payload    Json
+  statusCode Int      @map("status_code")
+  success    Boolean
+  attempt    Int      @default(1)
+  error      String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
-  @@index([endpointId])
+  @@index([webhookId])
   @@index([event])
   @@index([createdAt])
-  @@map("webhook_logs")
+  @@map("webhook_deliveries")
 }
 
 model AuditLog {
   id            String   @id @default(uuid()) @db.Uuid
-  userId        String?  @map("user_id") @db.Uuid
   merchantId    String?  @map("merchant_id") @db.Uuid
   adminId       String?  @map("admin_id") @db.VarChar(255)
   adminEmail    String?  @map("admin_email") @db.VarChar(255)
@@ -484,10 +400,8 @@ model AuditLog {
   metadata      Json?
   createdAt     DateTime @default(now()) @map("created_at")
 
-  user     User?     @relation("UserAuditLogs", fields: [userId], references: [id])
-  merchant Merchant? @relation("MerchantAuditLogs", fields: [merchantId], references: [id])
+  merchant Merchant? @relation(fields: [merchantId], references: [id])
 
-  @@index([userId])
   @@index([merchantId])
   @@index([adminId])
   @@index([action])
@@ -496,22 +410,21 @@ model AuditLog {
 }
 
 model FeeRecord {
-  id          String        @id @default(uuid()) @db.Uuid
-  paymentId   String        @unique @map("payment_id") @db.Uuid
-  merchantId  String        @map("merchant_id") @db.Uuid
-  network     CryptoNetwork
-  token       TokenSymbol
-  grossAmount Decimal       @map("gross_amount") @db.Decimal(30, 18)
-  feeRate     Decimal       @map("fee_rate") @db.Decimal(10, 6)
-  feeAmount   Decimal       @map("fee_amount") @db.Decimal(30, 18)
-  netAmount   Decimal       @map("net_amount") @db.Decimal(30, 18)
-  settledAt   DateTime?     @map("settled_at")
-  createdAt   DateTime      @default(now()) @map("created_at")
+  id          String    @id @default(uuid()) @db.Uuid
+  paymentId   String    @unique @map("payment_id") @db.VarChar(64)
+  merchantId  String    @map("merchant_id") @db.Uuid
+  crypto      String    @db.VarChar(20)
+  grossAmount Decimal   @map("gross_amount") @db.Decimal(30, 18)
+  feeAmount   Decimal   @map("fee_amount") @db.Decimal(30, 18)
+  netAmount   Decimal   @map("net_amount") @db.Decimal(30, 18)
+  settledAt   DateTime? @map("settled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   payment  Payment  @relation(fields: [paymentId], references: [id])
   merchant Merchant @relation(fields: [merchantId], references: [id])
 
   @@index([merchantId])
+  @@index([crypto])
   @@index([createdAt])
   @@index([settledAt])
   @@map("fee_records")
@@ -523,11 +436,11 @@ model FeeRecord {
 
 model WithdrawalApproval {
   id           String   @id @default(uuid()) @db.Uuid
-  withdrawalId String   @map("withdrawal_id") @db.Uuid
+  withdrawalId String   @map("withdrawal_id") @db.VarChar(64)
   adminId      String   @map("admin_id") @db.VarChar(255)
   adminEmail   String   @map("admin_email") @db.VarChar(255)
   adminRole    String   @map("admin_role") @db.VarChar(50)
-  action       String   @db.VarChar(20) // APPROVED | REJECTED
+  action       String   @db.VarChar(20)
   comment      String   @default("") @db.Text
   createdAt    DateTime @default(now()) @map("created_at")
 
@@ -564,8 +477,8 @@ model PlatformWallet {
 model WalletSweep {
   id          String      @id @default(uuid()) @db.Uuid
   crypto      String      @db.VarChar(20)
-  fromType    String      @map("from_type") @db.VarChar(10) // HOT | COLD
-  toType      String      @map("to_type") @db.VarChar(10)   // HOT | COLD
+  fromType    String      @map("from_type") @db.VarChar(10)
+  toType      String      @map("to_type") @db.VarChar(10)
   amount      Decimal     @db.Decimal(30, 18)
   txHash      String      @map("tx_hash") @db.VarChar(255)
   initiatedBy String      @map("initiated_by") @db.VarChar(255)
@@ -585,11 +498,11 @@ model WalletSweep {
 model ReconciliationReport {
   id                  String   @id @default(uuid()) @db.Uuid
   runBy               String   @map("run_by") @db.VarChar(255)
-  type                String   @db.VarChar(20) // manual | scheduled
+  type                String   @db.VarChar(20)
   results             Json
   overallStatus       String   @map("overall_status") @db.VarChar(30)
   totalDiscrepancyUsd Decimal? @default(0) @map("total_discrepancy_usd") @db.Decimal(20, 8)
-  duration            Int      // milliseconds
+  duration            Int
   createdAt           DateTime @default(now()) @map("created_at")
 
   @@index([overallStatus])
@@ -598,7 +511,7 @@ model ReconciliationReport {
 }
 
 // ──────────────────────────────────────────────
-// System Settings (key-value config store)
+// System Settings
 // ──────────────────────────────────────────────
 
 model SystemSetting {
@@ -618,21 +531,21 @@ model SystemSetting {
 // ──────────────────────────────────────────────
 
 model FraudAlert {
-  id                String   @id @default(uuid()) @db.Uuid
-  merchantId        String   @map("merchant_id") @db.Uuid
-  type              String   @db.VarChar(50)
-  severity          String   @db.VarChar(20)
-  status            String   @default("active") @db.VarChar(30)
-  title             String   @db.VarChar(255)
-  description       String   @db.Text
+  id                String    @id @default(uuid()) @db.Uuid
+  merchantId        String    @map("merchant_id") @db.Uuid
+  type              String    @db.VarChar(50)
+  severity          String    @db.VarChar(20)
+  status            String    @default("active") @db.VarChar(30)
+  title             String    @db.VarChar(255)
+  description       String    @db.Text
   metadata          Json?
-  recommendedAction String?  @map("recommended_action") @db.Text
-  autoFrozen        Boolean  @default(false) @map("auto_frozen")
-  notes             String?  @db.Text
+  recommendedAction String?   @map("recommended_action") @db.Text
+  autoFrozen        Boolean   @default(false) @map("auto_frozen")
+  notes             String?   @db.Text
   acknowledgedAt    DateTime? @map("acknowledged_at")
-  acknowledgedBy    String?  @map("acknowledged_by") @db.VarChar(255)
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  acknowledgedBy    String?   @map("acknowledged_by") @db.VarChar(255)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
@@ -705,7 +618,7 @@ model KycDocument {
 }
 
 // ──────────────────────────────────────────────
-// Admin Security: Sessions, Login Logs, IP Whitelist
+// Admin Security
 // ──────────────────────────────────────────────
 
 model AdminSession {
@@ -754,8 +667,6 @@ model IpWhitelist {
   label     String?  @db.VarChar(100)
   addedBy   String   @map("added_by") @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
-
-  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@unique([adminId, ipAddress])
   @@index([adminId])

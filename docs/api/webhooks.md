@@ -11,14 +11,12 @@ Webhooks send real-time HTTP POST notifications to your server when events occur
 | `payment.created` | A new payment was created |
 | `payment.confirming` | Transaction detected, awaiting confirmations |
 | `payment.confirmed` | Payment received required confirmations |
-| `payment.settled` | Funds credited to your wallet |
-| `payment.failed` | Payment failed (underpaid, wrong token) |
+| `payment.completed` | Funds credited to your wallet |
 | `payment.expired` | Payment window expired with no transaction |
-| `withdrawal.processing` | Withdrawal transaction submitted to blockchain |
+| `payment.failed` | Payment failed (underpaid, wrong token) |
+| `withdrawal.initiated` | Withdrawal request submitted for processing |
 | `withdrawal.completed` | Withdrawal confirmed on-chain |
 | `withdrawal.failed` | Withdrawal failed |
-
-Use `"*"` to subscribe to all events.
 
 ---
 
@@ -28,9 +26,9 @@ Every webhook event is an HTTP POST request with a JSON body:
 
 ```json
 {
-  "id": "evt_x1y2z3a4b5",
-  "type": "payment.confirmed",
-  "created_at": "2026-03-19T10:45:22Z",
+  "event": "payment.confirmed",
+  "timestamp": "2026-03-19T10:45:22Z",
+  "webhookId": "whk_m1n2o3p4q5",
   "data": {
     "id": "pay_1a2b3c4d5e6f",
     "merchant_id": "mch_a1b2c3d4e5f6",
@@ -62,11 +60,12 @@ Every webhook event is an HTTP POST request with a JSON body:
 | Header | Description |
 |--------|-------------|
 | `Content-Type` | `application/json` |
-| `X-MCC-Signature` | HMAC-SHA256 signature for verification |
+| `X-MCC-Signature` | HMAC-SHA256 hex signature of the raw request body |
 | `X-MCC-Event` | Event type (e.g., `payment.confirmed`) |
-| `X-MCC-Delivery-Id` | Unique delivery ID for idempotency |
-| `X-MCC-Timestamp` | Unix timestamp of the delivery |
+| `X-MCC-Timestamp` | ISO 8601 timestamp of the delivery (from the payload) |
 | `User-Agent` | `MyCryptoCoin-Webhook/1.0` |
+
+> **Note:** The actual backend does not send an `X-MCC-Delivery-Id` header. Use the `webhookId` field inside the payload body for idempotency tracking.
 
 ---
 
@@ -77,15 +76,14 @@ Every webhook request includes an `X-MCC-Signature` header containing an HMAC-SH
 The signature is computed as:
 
 ```
-HMAC-SHA256(webhook_secret, timestamp + "." + raw_body)
+HMAC-SHA256(webhook_secret, raw_body)
 ```
 
 Where:
-- `webhook_secret` is the secret returned when you created the webhook
-- `timestamp` is the value of the `X-MCC-Timestamp` header
-- `raw_body` is the raw JSON request body (not parsed)
+- `webhook_secret` is the hex secret returned when you created the webhook
+- `raw_body` is the raw JSON request body string (not parsed)
 
-The header format is: `sha256=<hex_signature>`
+The header value is the raw hex digest (no prefix).
 
 ### Verification -- Node.js
 
@@ -94,29 +92,28 @@ const crypto = require('crypto');
 
 function verifyWebhookSignature(req, webhookSecret) {
   const signature = req.headers['x-mcc-signature'];
-  const timestamp = req.headers['x-mcc-timestamp'];
   const body = req.rawBody; // Raw request body as string
 
-  if (!signature || !timestamp || !body) {
+  if (!signature || !body) {
     return false;
   }
 
-  // Reject requests older than 5 minutes to prevent replay attacks
-  const currentTime = Math.floor(Date.now() / 1000);
-  if (Math.abs(currentTime - parseInt(timestamp)) > 300) {
-    return false;
+  // Optionally reject old requests using the timestamp in the body
+  const parsed = JSON.parse(body);
+  const deliveryTime = new Date(parsed.timestamp).getTime();
+  if (Math.abs(Date.now() - deliveryTime) > 300000) {
+    return false; // Reject requests older than 5 minutes
   }
 
-  const payload = timestamp + '.' + body;
-  const expectedSignature = 'sha256=' + crypto
+  const expectedSignature = crypto
     .createHmac('sha256', webhookSecret)
-    .update(payload)
+    .update(body)
     .digest('hex');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  const a = Buffer.from(signature, 'hex');
+  const b = Buffer.from(expectedSignature, 'hex');
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 ```
 
@@ -125,24 +122,25 @@ function verifyWebhookSignature(req, webhookSecret) {
 ```python
 import hmac
 import hashlib
+import json
 import time
+from datetime import datetime
 
 def verify_webhook_signature(headers, body, webhook_secret):
     signature = headers.get('X-MCC-Signature', '')
-    timestamp = headers.get('X-MCC-Timestamp', '')
 
-    if not signature or not timestamp or not body:
+    if not signature or not body:
         return False
 
-    # Reject requests older than 5 minutes
-    current_time = int(time.time())
-    if abs(current_time - int(timestamp)) > 300:
+    # Optionally reject old requests
+    parsed = json.loads(body)
+    delivery_time = datetime.fromisoformat(parsed['timestamp'].replace('Z', '+00:00'))
+    if abs(time.time() - delivery_time.timestamp()) > 300:
         return False
 
-    payload = f"{timestamp}.{body}"
-    expected_signature = 'sha256=' + hmac.new(
+    expected_signature = hmac.new(
         webhook_secret.encode('utf-8'),
-        payload.encode('utf-8'),
+        body.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
 
@@ -154,20 +152,19 @@ def verify_webhook_signature(headers, body, webhook_secret):
 ```php
 function verifyWebhookSignature($headers, $body, $webhookSecret) {
     $signature = $headers['X-MCC-Signature'] ?? '';
-    $timestamp = $headers['X-MCC-Timestamp'] ?? '';
 
-    if (empty($signature) || empty($timestamp) || empty($body)) {
+    if (empty($signature) || empty($body)) {
         return false;
     }
 
-    // Reject requests older than 5 minutes
-    $currentTime = time();
-    if (abs($currentTime - intval($timestamp)) > 300) {
+    // Optionally reject old requests
+    $parsed = json_decode($body, true);
+    $deliveryTime = strtotime($parsed['timestamp']);
+    if (abs(time() - $deliveryTime) > 300) {
         return false;
     }
 
-    $payload = $timestamp . '.' . $body;
-    $expectedSignature = 'sha256=' . hash_hmac('sha256', $payload, $webhookSecret);
+    $expectedSignature = hash_hmac('sha256', $body, $webhookSecret);
 
     return hash_equals($expectedSignature, $signature);
 }
@@ -177,15 +174,15 @@ function verifyWebhookSignature($headers, $body, $webhookSecret) {
 
 ## Retry Policy
 
-If your endpoint does not respond with a `2xx` status code within 30 seconds, MyCryptoCoin retries the delivery:
+If your endpoint does not respond with a `2xx` status code within 10 seconds, MyCryptoCoin retries the delivery:
 
-| Attempt | Delay |
-|---------|-------|
-| 1st retry | 1 minute after initial attempt |
-| 2nd retry | 10 minutes after 1st retry |
-| 3rd retry | 1 hour after 2nd retry |
+| Attempt | Delay After Previous |
+|---------|---------------------|
+| 1st retry | 5 seconds |
+| 2nd retry | 30 seconds |
+| 3rd retry | 2 minutes |
 
-After 3 failed retries, the delivery is marked as failed. You can view failed deliveries in the dashboard and manually re-trigger them.
+After 3 total attempts (1 initial + 2 retries), the delivery is marked as failed and the webhook's failure count is incremented. After 10 consecutive failures, the webhook endpoint is automatically disabled.
 
 ### Best Practices for Reliability
 
@@ -213,8 +210,8 @@ POST /webhooks
 ### Example Request
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/webhooks \
-  -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
+curl -X POST https://api.mycrypto.co.in/api/v1/webhooks \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://yoursite.com/webhooks/mycryptocoin",
@@ -252,8 +249,8 @@ GET /webhooks
 ### Example Request
 
 ```bash
-curl https://api.mycrypto.co.in/v1/webhooks \
-  -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+curl https://api.mycrypto.co.in/api/v1/webhooks \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Example Response (200 OK)
@@ -293,8 +290,8 @@ PUT /webhooks/{id}
 ### Example Request
 
 ```bash
-curl -X PUT https://api.mycrypto.co.in/v1/webhooks/whk_m1n2o3p4q5 \
-  -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
+curl -X PUT https://api.mycrypto.co.in/api/v1/webhooks/whk_m1n2o3p4q5 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "events": ["*"],
@@ -333,8 +330,8 @@ DELETE /webhooks/{id}
 ### Example Request
 
 ```bash
-curl -X DELETE https://api.mycrypto.co.in/v1/webhooks/whk_m1n2o3p4q5 \
-  -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+curl -X DELETE https://api.mycrypto.co.in/api/v1/webhooks/whk_m1n2o3p4q5 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Example Response (200 OK)
@@ -358,8 +355,8 @@ POST /webhooks/{id}/test
 ### Example Request
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/webhooks/whk_m1n2o3p4q5/test \
-  -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+curl -X POST https://api.mycrypto.co.in/api/v1/webhooks/whk_m1n2o3p4q5/test \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Example Response (200 OK)

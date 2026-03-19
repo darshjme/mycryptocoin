@@ -248,6 +248,21 @@ export function applySecurityMiddleware(app: Express): void {
   app.use(require('express').json({ limit: '10mb' }));
   app.use(require('express').urlencoded({ extended: true, limit: '10mb' }));
 
+  // ---- Cookie parsing (no external dependency) ---------------------------
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    const cookieHeader = req.headers.cookie;
+    (req as any).cookies = {};
+    if (cookieHeader) {
+      for (const cookie of cookieHeader.split(';')) {
+        const [name, ...rest] = cookie.trim().split('=');
+        if (name) {
+          (req as any).cookies[name.trim()] = decodeURIComponent(rest.join('='));
+        }
+      }
+    }
+    next();
+  });
+
   // ---- Custom security middleware -----------------------------------------
   app.use(parameterPollutionProtection());
   app.use(xssSanitizer());

@@ -1,22 +1,28 @@
 import { create } from 'zustand';
+import type {
+  WalletBalance as SharedWalletBalance,
+  CryptoNetwork,
+  TokenSymbol,
+} from '@mycryptocoin/shared';
 
-export interface WalletBalance {
-  crypto: string;
-  symbol: string;
-  balance: number;
-  balanceUsd: number;
-  totalReceived: number;
-  totalWithdrawn: number;
-  pending: number;
-  pendingUsd: number;
-  address: string;
+/**
+ * Dashboard WalletBalance extends the shared type with UI-specific fields.
+ */
+export interface WalletBalance extends SharedWalletBalance {
+  /** Total received in string decimal form */
+  totalReceived: string;
+  /** Total withdrawn in string decimal form */
+  totalWithdrawn: string;
+  /** Deposit address for this wallet */
+  address?: string;
 }
 
 export interface AutoWithdrawConfig {
-  crypto: string;
+  network: CryptoNetwork;
+  token: TokenSymbol;
   enabled: boolean;
   destinationAddress: string;
-  threshold: number;
+  threshold: string;
   lastTriggered?: string;
 }
 
@@ -24,21 +30,20 @@ interface WalletState {
   wallets: WalletBalance[];
   autoWithdrawConfigs: AutoWithdrawConfig[];
   isLoading: boolean;
-  selectedCrypto: string | null;
+  selectedToken: TokenSymbol | null;
 
   setWallets: (wallets: WalletBalance[]) => void;
   setAutoWithdrawConfigs: (configs: AutoWithdrawConfig[]) => void;
   setLoading: (loading: boolean) => void;
-  setSelectedCrypto: (crypto: string | null) => void;
-  updateAutoWithdraw: (crypto: string, config: Partial<AutoWithdrawConfig>) => void;
-  getTotalBalanceUsd: () => number;
+  setSelectedToken: (token: TokenSymbol | null) => void;
+  updateAutoWithdraw: (network: CryptoNetwork, token: TokenSymbol, config: Partial<AutoWithdrawConfig>) => void;
 }
 
 export const useWalletStore = create<WalletState>((set, get) => ({
   wallets: [],
   autoWithdrawConfigs: [],
   isLoading: false,
-  selectedCrypto: null,
+  selectedToken: null,
 
   setWallets: (wallets) => set({ wallets }),
 
@@ -46,17 +51,12 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
 
-  setSelectedCrypto: (selectedCrypto) => set({ selectedCrypto }),
+  setSelectedToken: (selectedToken) => set({ selectedToken }),
 
-  updateAutoWithdraw: (crypto, config) =>
+  updateAutoWithdraw: (network, token, config) =>
     set((state) => ({
       autoWithdrawConfigs: state.autoWithdrawConfigs.map((c) =>
-        c.crypto === crypto ? { ...c, ...config } : c
+        c.network === network && c.token === token ? { ...c, ...config } : c
       ),
     })),
-
-  getTotalBalanceUsd: () => {
-    const { wallets } = get();
-    return wallets.reduce((sum, w) => sum + w.balanceUsd, 0);
-  },
 }));

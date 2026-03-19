@@ -1,7 +1,12 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../config/database';
 import { redis } from '../config/redis';
-import { CryptoSymbol, SUPPORTED_CRYPTOS } from '../config/crypto';
+import {
+  CryptoNetwork,
+  TokenSymbol,
+  WithdrawalStatus,
+} from '@mycryptocoin/shared';
+import { cryptoKey, SUPPORTED_CRYPTOS } from '../config/crypto';
 import { cryptoService } from './crypto.service';
 import { walletService } from './wallet.service';
 import { webhookService } from './webhook.service';
@@ -19,39 +24,40 @@ export class WithdrawalService {
    */
   async requestWithdrawal(
     merchantId: string,
-    crypto: CryptoSymbol,
+    network: CryptoNetwork,
+    token: TokenSymbol,
     data: {
       address: string;
       amount: string;
-      memo?: string;
     },
   ): Promise<any> {
-    const config = SUPPORTED_CRYPTOS[crypto];
+    const key = cryptoKey(network, token);
+    const config = SUPPORTED_CRYPTOS[key];
     const amount = new Decimal(data.amount);
 
     // Validate address
-    if (!validateCryptoAddress(data.address, crypto)) {
-      throw new ValidationError(`Invalid ${crypto} address: ${data.address}`);
+    if (!validateCryptoAddress(data.address, network)) {
+      throw new ValidationError(`Invalid ${token} address on ${network}: ${data.address}`);
     }
 
     // Validate minimum amount
-    if (!meetsMinimumAmount(amount, crypto)) {
+    if (!meetsMinimumAmount(amount, network, token)) {
       throw new ValidationError(
-        `Minimum withdrawal for ${crypto} is ${config.minAmount}`,
+        `Minimum withdrawal for ${token} on ${network} is ${config.minWithdrawal}`,
       );
     }
 
     // Check balance
-    const wallet = await walletService.getOrCreateWallet(merchantId, crypto);
+    const wallet = await walletService.getOrCreateWallet(merchantId, network, token);
     if (wallet.balance.lt(amount)) {
       throw new WithdrawalError(
-        `Insufficient balance. Available: ${wallet.balance.toString()} ${crypto}`,
+        `Insufficient balance. Available: ${wallet.balance.toString()} ${token}`,
       );
     }
 
     // Estimate network fee
-    const estimatedFee = await cryptoService.estimateFee(crypto, data.address, amount);
-    const totalDebit = amount; // Network fee is deducted from the sent amount
+    const estimatedFee = await cryptoService.estimateFee(network, token, data.address, amount);
+    const netAmount = amount.sub(estimatedFee);
 
     // Create withdrawal record
     const withdrawal = await prisma.withdrawal.create({
@@ -59,18 +65,18 @@ export class WithdrawalService {
         id: generateId('wd'),
         merchantId,
         walletId: wallet.id,
-        crypto: crypto as string,
+        network,
+        token,
         amount,
+        fee: estimatedFee,
+        netAmount,
         toAddress: data.address,
-        memo: data.memo,
-        estimatedFee,
-        status: 'PENDING',
-        type: 'manual',
+        status: WithdrawalStatus.PENDING,
       },
     });
 
     // Debit balance immediately (reserve funds)
-    await walletService.debitBalance(merchantId, crypto, amount);
+    await walletService.debitBalance(merchantId, network, token, amount);
 
     // Queue for processing
     await redis.lpush(
@@ -79,26 +85,25 @@ export class WithdrawalService {
         withdrawalId: withdrawal.id,
         walletId: wallet.id,
         merchantId,
-        crypto,
+        network,
+        token,
         amount: amount.toString(),
         address: data.address,
-        memo: data.memo,
-        type: 'manual',
-        derivationIndex: wallet.derivationIndex,
       }),
     );
 
     // Dispatch webhook
-    await webhookService.dispatch(merchantId, 'withdrawal.initiated', {
+    await webhookService.dispatch(merchantId, 'withdrawal.completed', {
       withdrawalId: withdrawal.id,
       amount: amount.toString(),
-      crypto: crypto as string,
+      network,
+      token,
       toAddress: data.address,
       estimatedFee: estimatedFee.toString(),
     });
 
     logger.info(
-      `Withdrawal requested: ${withdrawal.id} — ${amount} ${crypto} to ${data.address}`,
+      `Withdrawal requested: ${withdrawal.id} — ${amount} ${token} (${network}) to ${data.address}`,
     );
 
     return withdrawal;
@@ -124,17 +129,19 @@ export class WithdrawalService {
       await prisma.withdrawal.update({
         where: { id: data.withdrawalId },
         data: {
-          status: 'FAILED',
-          error: (error as Error).message,
+          status: WithdrawalStatus.FAILED,
+          reviewNote: (error as Error).message,
         },
       });
 
       // Refund the balance
+      const network = data.network as CryptoNetwork;
+      const token = data.token as TokenSymbol;
       await walletService.creditBalance(
         data.merchantId,
-        data.crypto as CryptoSymbol,
+        network,
+        token,
         new Decimal(data.amount),
-        `refund:${data.withdrawalId}`,
       );
 
       // Notify
@@ -152,34 +159,25 @@ export class WithdrawalService {
     withdrawalId: string;
     walletId: string;
     merchantId: string;
-    crypto: string;
+    network: string;
+    token: string;
     amount: string;
     address: string;
-    memo?: string;
-    derivationIndex: number;
   }): Promise<void> {
-    const crypto = data.crypto as CryptoSymbol;
+    const network = data.network as CryptoNetwork;
+    const token = data.token as TokenSymbol;
     const amount = new Decimal(data.amount);
 
     // Update status to PROCESSING
     await prisma.withdrawal.update({
       where: { id: data.withdrawalId },
-      data: { status: 'PROCESSING' },
+      data: { status: WithdrawalStatus.PROCESSING },
     });
 
-    // Get the private key for the wallet's main address (index 0)
-    const privateKey = cryptoService.derivePrivateKey(
-      crypto,
-      data.derivationIndex,
-      0,
-    );
-
     // Send the transaction
-    const result = await cryptoService.sendTransaction(crypto, {
-      fromPrivateKey: privateKey,
+    const result = await cryptoService.sendTransaction(network, token, {
       toAddress: data.address,
       amount,
-      memo: data.memo,
     });
 
     // Update withdrawal record
@@ -187,9 +185,10 @@ export class WithdrawalService {
       where: { id: data.withdrawalId },
       data: {
         txHash: result.txHash,
-        networkFee: result.fee,
-        status: 'COMPLETED',
-        completedAt: new Date(),
+        fee: result.fee,
+        netAmount: amount.sub(result.fee),
+        status: WithdrawalStatus.COMPLETED,
+        processedAt: new Date(),
       },
     });
 
@@ -197,7 +196,8 @@ export class WithdrawalService {
     await webhookService.dispatch(data.merchantId, 'withdrawal.completed', {
       withdrawalId: data.withdrawalId,
       amount: data.amount,
-      crypto: data.crypto,
+      network,
+      token,
       toAddress: data.address,
       txHash: result.txHash,
       networkFee: result.fee.toString(),
@@ -211,7 +211,8 @@ export class WithdrawalService {
     if (merchant) {
       await notificationService.sendWithdrawalNotification(merchant, {
         amount: data.amount,
-        crypto: data.crypto,
+        network,
+        token,
         address: data.address,
         txHash: result.txHash,
         fee: result.fee.toString(),
@@ -229,14 +230,16 @@ export class WithdrawalService {
   async getWithdrawals(
     merchantId: string,
     filters: {
-      crypto?: string;
-      status?: string;
+      network?: CryptoNetwork;
+      token?: TokenSymbol;
+      status?: WithdrawalStatus;
       page: number;
       limit: number;
     },
   ): Promise<{ withdrawals: any[]; total: number }> {
     const where: any = { merchantId };
-    if (filters.crypto) where.crypto = filters.crypto;
+    if (filters.network) where.network = filters.network;
+    if (filters.token) where.token = filters.token;
     if (filters.status) where.status = filters.status;
 
     const [withdrawals, total] = await Promise.all([

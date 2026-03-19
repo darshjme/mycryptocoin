@@ -18,11 +18,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@hapi/boom": "^10.0.1",
     "@mycryptocoin/shared": "*",
     "@prisma/client": "^5.14.0",
     "@solana/web3.js": "^1.91.8",
     "@whiskeysockets/baileys": "^6.7.5",
     "bcrypt": "^5.1.1",
+    "bip32": "^4.0.0",
     "bitcoinjs-lib": "^6.1.6",
     "bullmq": "^5.1.0",
     "compression": "^1.7.4",
