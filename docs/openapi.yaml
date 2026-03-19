@@ -68,6 +68,18 @@ tags:
     description: Manage webhook endpoints for event notifications
   - name: Merchant
     description: Merchant profile and API key management
+  - name: Checkout
+    description: Hosted checkout sessions with white-label support
+  - name: Invoices
+    description: Professional invoice creation, emailing, and payment tracking
+  - name: Refunds
+    description: Full and partial refunds for completed payments
+  - name: Discounts
+    description: Coupon and discount code management
+  - name: White-Label
+    description: Customize checkout branding, colors, domains, and CSS
+  - name: Rates
+    description: Public exchange rate data (no authentication required)
 
 security:
   - ApiKeyAuth: []
@@ -898,3 +910,545 @@ paths:
           description: API key revoked
         "404":
           description: API key not found
+
+  # ═══════════════════════════════════════════════════════════
+  #  CHECKOUT SESSIONS
+  # ═══════════════════════════════════════════════════════════
+
+  /checkout/session:
+    post:
+      tags: [Checkout]
+      summary: Create a hosted checkout session
+      description: |
+        Returns a checkoutUrl that renders a hosted payment page.
+        Supports display modes (page, popup, inline, hidden), discount codes,
+        and white-label theming.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: string
+                currency:
+                  type: string
+                  default: USD
+                displayMode:
+                  type: string
+                  enum: [page, popup, inline, hidden]
+                  default: page
+                allowedCryptos:
+                  type: array
+                  items:
+                    type: string
+                customerEmail:
+                  type: string
+                  format: email
+                externalId:
+                  type: string
+                callbackUrl:
+                  type: string
+                  format: uri
+                successUrl:
+                  type: string
+                  format: uri
+                cancelUrl:
+                  type: string
+                  format: uri
+                metadata:
+                  type: object
+                discountCode:
+                  type: string
+      responses:
+        "201":
+          description: Checkout session created with checkoutUrl
+
+  /checkout/{sessionId}:
+    get:
+      tags: [Checkout]
+      summary: Get checkout session data (public)
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session data with merchant info, theme, and available cryptos
+        "404":
+          description: Session not found or expired
+        "410":
+          description: Session has expired
+
+  /checkout/{sessionId}/status:
+    get:
+      tags: [Checkout]
+      summary: Poll checkout session status
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session and payment status
+        "404":
+          description: Session not found
+
+  # ═══════════════════════════════════════════════════════════
+  #  INVOICES
+  # ═══════════════════════════════════════════════════════════
+
+  /invoices:
+    post:
+      tags: [Invoices]
+      summary: Create a professional invoice
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lineItems]
+              properties:
+                customerName:
+                  type: string
+                customerEmail:
+                  type: string
+                  format: email
+                customerAddress:
+                  type: string
+                lineItems:
+                  type: array
+                  items:
+                    type: object
+                    required: [description, quantity, unitPrice, amount]
+                    properties:
+                      description:
+                        type: string
+                      quantity:
+                        type: number
+                      unitPrice:
+                        type: string
+                      amount:
+                        type: string
+                currency:
+                  type: string
+                  default: USD
+                taxRate:
+                  type: number
+                dueDate:
+                  type: string
+                  format: date
+                notes:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        "201":
+          description: Invoice created
+
+    get:
+      tags: [Invoices]
+      summary: List invoices
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, SENT, VIEWED, PAID, OVERDUE, CANCELLED]
+        - name: customerEmail
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated list of invoices
+
+  /invoices/{id}:
+    get:
+      tags: [Invoices]
+      summary: Get invoice details
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice details
+        "404":
+          description: Invoice not found
+
+    put:
+      tags: [Invoices]
+      summary: Update an invoice
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Invoice updated
+        "404":
+          description: Invoice not found
+
+    delete:
+      tags: [Invoices]
+      summary: Cancel an invoice
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice cancelled
+
+  /invoices/{id}/send:
+    post:
+      tags: [Invoices]
+      summary: Email invoice to customer
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice sent
+
+  # ═══════════════════════════════════════════════════════════
+  #  REFUNDS
+  # ═══════════════════════════════════════════════════════════
+
+  /payments/{id}/refund:
+    post:
+      tags: [Refunds]
+      summary: Initiate a refund (full or partial)
+      description: Supports refund in original crypto or USDT.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  description: Omit for full refund
+                reason:
+                  type: string
+                toAddress:
+                  type: string
+                refundInUsdt:
+                  type: boolean
+                  default: false
+      responses:
+        "201":
+          description: Refund initiated
+        "400":
+          description: Payment not eligible for refund
+
+  /refunds:
+    get:
+      tags: [Refunds]
+      summary: List refunds
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: paymentId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: List of refunds
+
+  /refunds/{id}:
+    get:
+      tags: [Refunds]
+      summary: Get refund details
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Refund details
+        "404":
+          description: Refund not found
+
+  # ═══════════════════════════════════════════════════════════
+  #  DISCOUNT CODES
+  # ═══════════════════════════════════════════════════════════
+
+  /discounts:
+    post:
+      tags: [Discounts]
+      summary: Create a discount code
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, value]
+              properties:
+                code:
+                  type: string
+                type:
+                  type: string
+                  enum: [PERCENTAGE, FIXED]
+                value:
+                  type: string
+                maxUses:
+                  type: integer
+                perCustomerLimit:
+                  type: integer
+                minOrderAmount:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+      responses:
+        "201":
+          description: Discount created
+
+    get:
+      tags: [Discounts]
+      summary: List discount codes
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: List of discounts
+
+  /discounts/validate:
+    post:
+      tags: [Discounts]
+      summary: Validate a discount code
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, amount]
+              properties:
+                code:
+                  type: string
+                amount:
+                  type: string
+                customerEmail:
+                  type: string
+      responses:
+        "200":
+          description: Validation result with discounted amount
+
+  /discounts/{id}:
+    get:
+      tags: [Discounts]
+      summary: Get discount details
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Discount details
+        "404":
+          description: Discount not found
+
+    delete:
+      tags: [Discounts]
+      summary: Deactivate a discount code
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Discount deactivated
+
+  # ═══════════════════════════════════════════════════════════
+  #  WHITE-LABEL
+  # ═══════════════════════════════════════════════════════════
+
+  /whitelabel:
+    get:
+      tags: [White-Label]
+      summary: Get white-label configuration
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Current white-label settings
+
+    put:
+      tags: [White-Label]
+      summary: Update white-label configuration
+      description: Customize checkout branding, colors, domain, CSS, and email sender.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logoUrl:
+                  type: string
+                primaryColor:
+                  type: string
+                secondaryColor:
+                  type: string
+                accentColor:
+                  type: string
+                customDomain:
+                  type: string
+                customSenderName:
+                  type: string
+                customSenderEmail:
+                  type: string
+                removeBranding:
+                  type: boolean
+                customCss:
+                  type: string
+                faviconUrl:
+                  type: string
+                companyName:
+                  type: string
+                supportEmail:
+                  type: string
+                termsUrl:
+                  type: string
+                privacyUrl:
+                  type: string
+      responses:
+        "200":
+          description: Configuration updated
+
+  /whitelabel/verify-domain:
+    post:
+      tags: [White-Label]
+      summary: Verify custom domain CNAME
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Domain verification result
+
+  # ═══════════════════════════════════════════════════════════
+  #  EXCHANGE RATES (PUBLIC)
+  # ═══════════════════════════════════════════════════════════
+
+  /rates:
+    get:
+      tags: [Rates]
+      summary: Get all exchange rates (public, no auth)
+      responses:
+        "200":
+          description: Exchange rates for all supported cryptocurrencies
+
+  /rates/{crypto}:
+    get:
+      tags: [Rates]
+      summary: Get specific crypto rate (public, no auth)
+      parameters:
+        - name: crypto
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Exchange rate
+        "404":
+          description: Rate not found
