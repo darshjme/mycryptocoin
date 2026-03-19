@@ -99,7 +99,7 @@ Revocation is immediate. Any in-flight requests using the revoked key will fail.
 Bearer tokens are short-lived JWTs obtained through the login flow. Pass the token in the `Authorization` header.
 
 ```bash
-curl https://api.mycrypto.co.in/v1/payments \
+curl https://api.mycrypto.co.in/api/v1/payments \
   -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
@@ -115,62 +115,42 @@ curl https://api.mycrypto.co.in/v1/payments \
 **Step 1: Register (first time only)**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/register \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210",
     "email": "merchant@example.com",
-    "password": "SecurePass123",
-    "business_name": "Acme Digital Services",
-    "business_type": "private_limited"
+    "password": "SecurePass123!",
+    "businessName": "Acme Digital Services",
+    "phone": "+919876543210"
   }'
 ```
+
+> **Note:** `email`, `password`, `businessName`, and `phone` are required. Password must include uppercase, lowercase, number, and special character. Phone must be in international format (e.g., `+919876543210`). Optional fields: `whatsappNumber`, `country`, `website`.
 
 **Step 2: Verify WhatsApp OTP**
 
-A 6-digit OTP is sent to the provided WhatsApp number. Submit it:
+A 6-digit OTP is sent to the provided phone/WhatsApp number. Submit it:
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/verify-otp \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/verify-whatsapp-otp \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210",
-    "otp": "482916"
+    "phone": "+919876543210",
+    "otp": "482916",
+    "purpose": "registration"
   }'
 ```
 
-Response includes access and refresh tokens:
-
-```json
-{
-  "verified": true,
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "mcc_rt_x7k9m2p4q8...",
-  "token_type": "Bearer",
-  "expires_in": 86400,
-  "message": "WhatsApp number verified successfully."
-}
-```
+> **Note:** The `purpose` field must be one of: `registration`, `login`, `2fa`.
 
 **Step 3: Login (subsequent times)**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "whatsapp_number": "+919876543210",
-    "password": "SecurePass123"
-  }'
-```
-
-Or with email:
-
-```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/login \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "merchant@example.com",
-    "password": "SecurePass123"
+    "password": "SecurePass123!"
   }'
 ```
 
@@ -178,14 +158,15 @@ Response:
 
 ```json
 {
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "mcc_rt_x7k9m2p4q8...",
-  "token_type": "Bearer",
-  "expires_in": 86400,
-  "merchant": {
-    "id": "mch_a1b2c3d4e5f6",
-    "business_name": "Acme Digital Services",
-    "status": "active"
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "mch_a1b2c3d4e5f6",
+      "email": "merchant@example.com",
+      "role": "MERCHANT"
+    }
   }
 }
 ```
@@ -193,10 +174,10 @@ Response:
 **Step 4: Refresh token before expiry**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/refresh \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/refresh-token \
   -H "Content-Type: application/json" \
   -d '{
-    "refresh_token": "mcc_rt_x7k9m2p4q8..."
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }'
 ```
 
@@ -204,10 +185,11 @@ Response:
 
 ```json
 {
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "mcc_rt_n3w7t0k3n...",
-  "token_type": "Bearer",
-  "expires_in": 86400
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
 }
 ```
 
@@ -217,27 +199,30 @@ Response:
 
 ## Password Recovery
 
-**Step 1: Request reset OTP**
+**Step 1: Request password reset**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/forgot-password \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/forgot-password \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210"
+    "email": "merchant@example.com"
   }'
 ```
 
-**Step 2: Reset with OTP**
+> **Note:** The `email` field is required. A reset link/token will be sent to the email address.
+
+**Step 2: Reset with token**
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/auth/reset-password \
+curl -X POST https://api.mycrypto.co.in/api/v1/auth/reset-password \
   -H "Content-Type: application/json" \
   -d '{
-    "whatsapp_number": "+919876543210",
-    "otp": "482916",
-    "new_password": "NewSecurePass456"
+    "token": "reset_token_from_email",
+    "password": "NewSecurePass456!"
   }'
 ```
+
+> **Note:** Password must include uppercase, lowercase, number, and special character.
 
 ---
 
@@ -278,10 +263,9 @@ const apiKey = "mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"; // DON'T DO THIS
 
 | Status | Code | Description |
 |--------|------|-------------|
-| 401 | `authentication_required` | No API key or Bearer token provided |
-| 401 | `invalid_api_key` | API key is invalid or has been revoked |
-| 401 | `token_expired` | Bearer token has expired, use refresh |
-| 401 | `invalid_token` | Bearer token is malformed |
-| 403 | `forbidden` | API key lacks required permissions |
-| 403 | `account_suspended` | Merchant account is suspended |
-| 403 | `ip_not_whitelisted` | Request IP not in whitelist |
+| 401 | `AUTH_ERROR` | No authentication token provided, token expired, invalid, or revoked API key |
+| 403 | `FORBIDDEN` | Insufficient permissions, admin access required, or account deactivated |
+| 400 | `VALIDATION_ERROR` | Invalid request parameters (field-level errors in `details` array) |
+| 400 | `OTP_ERROR` | OTP verification failed |
+| 409 | `CONFLICT` | Resource already exists (duplicate email/phone) |
+| 429 | `RATE_LIMIT` | Too many requests |

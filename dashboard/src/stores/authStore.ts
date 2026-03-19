@@ -1,15 +1,23 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { UserRole, KycStatus } from '@mycryptocoin/shared';
 
+/**
+ * Dashboard-facing User type.
+ * Aligns with the shared User interface (Prisma model) but only includes
+ * the fields relevant to the authenticated client session.
+ */
 export interface User {
   id: string;
   email: string;
-  whatsapp: string;
+  role: UserRole;
   businessName: string;
-  businessType: 'ecommerce' | 'airline' | 'real_estate' | 'forex_broker' | 'other';
-  avatar?: string;
-  is2FAEnabled: boolean;
-  isVerified: boolean;
+  businessUrl?: string;
+  logoUrl?: string;
+  isEmailVerified: boolean;
+  twoFactorEnabled: boolean;
+  kycStatus: KycStatus;
+  lastLoginAt?: string;
   createdAt: string;
 }
 
@@ -20,7 +28,7 @@ interface AuthState {
   isLoading: boolean;
   otpPhone: string | null;
   otpEmail: string | null;
-  otpPurpose: 'login' | 'register' | 'withdraw' | '2fa' | null;
+  otpPurpose: 'LOGIN' | 'WITHDRAWAL' | 'EMAIL_VERIFY' | 'PASSWORD_RESET' | null;
 
   // Actions
   setUser: (user: User) => void;

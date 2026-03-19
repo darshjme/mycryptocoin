@@ -52,7 +52,7 @@ POST /payments
 ### Example Request
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/payments \
+curl -X POST https://api.mycrypto.co.in/api/v1/payments \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
   -H "Content-Type: application/json" \
   -d '{
@@ -98,7 +98,7 @@ curl -X POST https://api.mycrypto.co.in/v1/payments \
   "callback_url": "https://yoursite.com/webhooks/crypto",
   "redirect_url": "https://yoursite.com/order/success",
   "checkout_url": "https://pay.mycrypto.co.in/pay_1a2b3c4d5e6f",
-  "qr_code_url": "https://api.mycrypto.co.in/v1/payments/pay_1a2b3c4d5e6f/qr",
+  "qr_code_url": "https://api.mycrypto.co.in/api/v1/payments/pay_1a2b3c4d5e6f/qr",
   "expires_at": "2026-03-19T11:00:00Z",
   "confirmed_at": null,
   "settled_at": null,
@@ -126,7 +126,7 @@ Use the `deposit_address`, `crypto_amount`, and `qr_code_url` to build your own 
 ```html
 <p>Send exactly <strong>99.990000 USDT</strong> to:</p>
 <code>0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18</code>
-<img src="https://api.mycrypto.co.in/v1/payments/pay_1a2b3c4d5e6f/qr" alt="QR Code" />
+<img src="https://api.mycrypto.co.in/api/v1/payments/pay_1a2b3c4d5e6f/qr" alt="QR Code" />
 ```
 
 ---
@@ -153,7 +153,7 @@ GET /payments
 ### Example Request
 
 ```bash
-curl "https://api.mycrypto.co.in/v1/payments?status=confirmed&crypto=USDT&page=1&limit=10" \
+curl "https://api.mycrypto.co.in/api/v1/payments?status=confirmed&crypto=USDT&page=1&limit=10" \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
 ```
 
@@ -186,7 +186,7 @@ curl "https://api.mycrypto.co.in/v1/payments?status=confirmed&crypto=USDT&page=1
       "callback_url": "https://yoursite.com/webhooks/crypto",
       "redirect_url": "https://yoursite.com/order/success",
       "checkout_url": "https://pay.mycrypto.co.in/pay_1a2b3c4d5e6f",
-      "qr_code_url": "https://api.mycrypto.co.in/v1/payments/pay_1a2b3c4d5e6f/qr",
+      "qr_code_url": "https://api.mycrypto.co.in/api/v1/payments/pay_1a2b3c4d5e6f/qr",
       "expires_at": "2026-03-19T11:00:00Z",
       "confirmed_at": "2026-03-19T10:45:22Z",
       "settled_at": "2026-03-19T10:45:30Z",
@@ -222,7 +222,7 @@ GET /payments/{id}
 ### Example Request
 
 ```bash
-curl https://api.mycrypto.co.in/v1/payments/pay_1a2b3c4d5e6f \
+curl https://api.mycrypto.co.in/api/v1/payments/pay_1a2b3c4d5e6f \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
 ```
 
@@ -249,7 +249,7 @@ POST /payments/{id}/verify
 ### Example Request
 
 ```bash
-curl -X POST https://api.mycrypto.co.in/v1/payments/pay_1a2b3c4d5e6f/verify \
+curl -X POST https://api.mycrypto.co.in/api/v1/payments/pay_1a2b3c4d5e6f/verify \
   -H "X-API-Key: mcc_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
 ```
 

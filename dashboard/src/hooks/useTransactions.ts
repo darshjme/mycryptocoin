@@ -1,18 +1,18 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ENDPOINTS } from '@/lib/endpoints';
+import type {
+  Transaction as SharedTransaction,
+  TransactionStatus,
+  CryptoNetwork,
+  TokenSymbol,
+} from '@mycryptocoin/shared';
 
-export interface Transaction {
-  id: string;
-  type: 'deposit' | 'withdrawal' | 'fee';
-  crypto: string;
-  amount: number;
-  amountUsd: number;
-  status: 'confirmed' | 'pending' | 'failed';
-  description: string;
-  txHash: string;
-  createdAt: string;
-}
+/**
+ * Dashboard-facing Transaction type.
+ * Re-exports the canonical shared Transaction interface.
+ */
+export type Transaction = SharedTransaction;
 
 interface TransactionsResponse {
   transactions: Transaction[];
@@ -24,9 +24,9 @@ interface TransactionsResponse {
 }
 
 interface TransactionFilters {
-  type?: string;
-  crypto?: string;
-  status?: string;
+  network?: CryptoNetwork;
+  token?: TokenSymbol;
+  status?: TransactionStatus;
   dateFrom?: string;
   dateTo?: string;
   search?: string;

@@ -2,25 +2,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ENDPOINTS } from '@/lib/endpoints';
 import { useNotificationStore } from '@/stores/notificationStore';
+import type {
+  Payment as SharedPayment,
+  PaymentStatus,
+  CryptoNetwork,
+  TokenSymbol,
+  PaginatedResponse,
+} from '@mycryptocoin/shared';
 
-export interface Payment {
-  id: string;
-  orderId: string;
-  crypto: string;
-  amount: number;
-  amountUsd: number;
-  fee: number;
-  feeUsd: number;
-  status: 'confirmed' | 'pending' | 'failed' | 'expired';
-  senderAddress: string;
-  receiverAddress: string;
-  txHash: string;
-  confirmations: number;
-  requiredConfirmations: number;
-  createdAt: string;
-  confirmedAt?: string;
-  metadata?: Record<string, string>;
-}
+/**
+ * Dashboard-facing Payment type.
+ * Re-exports the canonical shared Payment interface so all dashboard
+ * components reference the single source of truth.
+ */
+export type Payment = SharedPayment;
 
 interface PaymentsResponse {
   payments: Payment[];
@@ -33,12 +28,11 @@ interface PaymentsResponse {
 interface PaymentFilters {
   page?: number;
   limit?: number;
-  crypto?: string;
-  status?: string;
+  network?: CryptoNetwork;
+  token?: TokenSymbol;
+  status?: PaymentStatus;
   dateFrom?: string;
   dateTo?: string;
-  amountMin?: number;
-  amountMax?: number;
   search?: string;
 }
 
@@ -75,11 +69,12 @@ export function usePayments(filters: PaymentFilters = {}) {
 
   const createPaymentLinkMutation = useMutation({
     mutationFn: async (payload: {
-      amount: number;
-      crypto: string;
-      orderId: string;
+      amount: string;
+      network: CryptoNetwork;
+      token: TokenSymbol;
+      externalId?: string;
       callbackUrl?: string;
-      metadata?: Record<string, string>;
+      metadata?: Record<string, unknown>;
     }) => {
       const { data } = await api.post(ENDPOINTS.PAYMENTS.CREATE, payload);
       return data;

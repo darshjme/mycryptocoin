@@ -1,13 +1,14 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../config/database';
-import { env } from '../config/env';
+import { PLATFORM_FEE_RATE } from '@mycryptocoin/shared';
 import { logger } from '../utils/logger';
 
 export class FeeService {
-  private readonly feePercent: Decimal;
+  private readonly feeRate: Decimal;
 
   constructor() {
-    this.feePercent = new Decimal(env.PLATFORM_FEE_PERCENT);
+    // PLATFORM_FEE_RATE is 0.005 (i.e. 0.5%)
+    this.feeRate = new Decimal(PLATFORM_FEE_RATE);
   }
 
   /**
@@ -19,8 +20,7 @@ export class FeeService {
     feeAmount: Decimal;
   } {
     const feeAmount = grossAmount
-      .mul(this.feePercent)
-      .div(new Decimal(100))
+      .mul(this.feeRate)
       .toDecimalPlaces(18, Decimal.ROUND_UP);
 
     const netAmount = grossAmount.sub(feeAmount);
