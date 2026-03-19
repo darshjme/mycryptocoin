@@ -1122,7 +1122,7 @@ wallets.data.forEach(w => {
             language: "python",
             code: `wallets = mcc.get_wallets()
 for w in wallets['data']:
-    print(f"{w['crypto']}: {w['balance']} (${w['balance_usd']})")`,
+    print(f"{w['crypto']}: {w['balance']} (\${w['balance_usd']})")`,
           },
         ]}
       />
