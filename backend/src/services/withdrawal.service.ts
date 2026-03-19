@@ -21,41 +21,49 @@ export class WithdrawalService {
 
   /**
    * Request a manual withdrawal.
+   *
+   * Merchants can ONLY withdraw USDT TRC-20. Destination must be a valid
+   * TRON address (starts with 'T', 34 characters).
    */
   async requestWithdrawal(
     merchantId: string,
-    network: CryptoNetwork,
-    token: TokenSymbol,
+    _network: CryptoNetwork,
+    _token: TokenSymbol,
     data: {
       address: string;
       amount: string;
     },
   ): Promise<any> {
+    // Force USDT TRC-20 — merchants can only withdraw USDT on TRON
+    const network = 'TRON' as CryptoNetwork;
+    const token = 'USDT' as TokenSymbol;
     const key = cryptoKey(network, token);
     const config = SUPPORTED_CRYPTOS[key];
     const amount = new Decimal(data.amount);
 
-    // Validate address
-    if (!validateCryptoAddress(data.address, network)) {
-      throw new ValidationError(`Invalid ${token} address on ${network}: ${data.address}`);
+    // Validate TRON address (starts with T, 34 characters)
+    if (!data.address.startsWith('T') || data.address.length !== 34) {
+      throw new ValidationError(
+        `Invalid TRON address. Must start with 'T' and be 34 characters: ${data.address}`,
+      );
     }
 
     // Validate minimum amount
     if (!meetsMinimumAmount(amount, network, token)) {
       throw new ValidationError(
-        `Minimum withdrawal for ${token} on ${network} is ${config.minWithdrawal}`,
+        `Minimum withdrawal for USDT TRC-20 is ${config.minWithdrawal}`,
       );
     }
 
-    // Check balance
-    const wallet = await walletService.getOrCreateWallet(merchantId, network, token);
+    // Check USDT balance from merchant's single settlement wallet
+    const wallet = await walletService.getOrCreateUsdtWallet(merchantId);
     if (wallet.balance.lt(amount)) {
       throw new WithdrawalError(
-        `Insufficient balance. Available: ${wallet.balance.toString()} ${token}`,
+        `Insufficient USDT balance. Available: ${wallet.balance.toString()} USDT`,
       );
     }
 
-    // Estimate network fee
+    // Estimate network fee (TRON is cheap, typically ~1 USDT)
     const estimatedFee = await cryptoService.estimateFee(network, token, data.address, amount);
     const netAmount = amount.sub(estimatedFee);
 
@@ -75,7 +83,7 @@ export class WithdrawalService {
       },
     });
 
-    // Debit balance immediately (reserve funds)
+    // Debit from merchant's USDT balance immediately (reserve funds)
     await walletService.debitBalance(merchantId, network, token, amount);
 
     // Queue for processing
@@ -93,17 +101,17 @@ export class WithdrawalService {
     );
 
     // Dispatch webhook
-    await webhookService.dispatch(merchantId, 'withdrawal.completed', {
+    await webhookService.dispatch(merchantId, 'withdrawal.requested', {
       withdrawalId: withdrawal.id,
       amount: amount.toString(),
-      network,
-      token,
+      currency: 'USDT',
+      network: 'TRC-20',
       toAddress: data.address,
       estimatedFee: estimatedFee.toString(),
     });
 
     logger.info(
-      `Withdrawal requested: ${withdrawal.id} — ${amount} ${token} (${network}) to ${data.address}`,
+      `Withdrawal requested: ${withdrawal.id} — ${amount} USDT TRC-20 to ${data.address}`,
     );
 
     return withdrawal;

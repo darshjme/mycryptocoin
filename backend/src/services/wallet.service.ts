@@ -121,43 +121,55 @@ export class WalletService {
 
   /**
    * Get all wallets for a merchant.
+   *
+   * Merchants now have a SINGLE USDT TRC-20 wallet for their balance.
+   * Deposit addresses for other cryptos still exist (for receiving payments),
+   * but the merchant's settlement balance is always USDT TRC-20.
    */
   async getMerchantWallets(merchantId: string): Promise<any[]> {
-    const wallets = await prisma.wallet.findMany({
-      where: { merchantId },
-      orderBy: { crypto: 'asc' },
-    });
+    // Return only the merchant's USDT TRC-20 settlement wallet
+    const usdtWallet = await this.getOrCreateUsdtWallet(merchantId);
 
-    // Enrich with real-time balance checks from cache or blockchain
-    const enriched = await Promise.all(
-      wallets.map(async (wallet) => {
-        const cacheKey = `balance:${wallet.crypto}:${wallet.address}`;
-        const cachedBalance = await redis.get(cacheKey);
+    const cacheKey = `balance:USDT_TRC20:${usdtWallet.address}`;
+    const cachedBalance = await redis.get(cacheKey);
 
-        let liveBalance: Decimal;
-        if (cachedBalance) {
-          liveBalance = new Decimal(cachedBalance);
-        } else {
-          try {
-            liveBalance = await cryptoService.getBalance(
-              wallet.crypto as CryptoSymbol,
-              wallet.address,
-            );
-            // Cache for 60 seconds
-            await redis.setex(cacheKey, 60, liveBalance.toString());
-          } catch {
-            liveBalance = wallet.balance;
-          }
-        }
+    let liveBalance: Decimal;
+    if (cachedBalance) {
+      liveBalance = new Decimal(cachedBalance);
+    } else {
+      try {
+        liveBalance = await cryptoService.getBalance(
+          'USDT_TRC20' as CryptoSymbol,
+          usdtWallet.address,
+        );
+        await redis.setex(cacheKey, 60, liveBalance.toString());
+      } catch {
+        liveBalance = usdtWallet.balance;
+      }
+    }
 
-        return {
-          ...wallet,
-          liveBalance: liveBalance.toString(),
-        };
-      }),
-    );
+    return [{
+      ...usdtWallet,
+      liveBalance: liveBalance.toString(),
+      settlementCurrency: 'USDT',
+      settlementNetwork: 'TRC-20',
+    }];
+  }
 
-    return enriched;
+  /**
+   * Get or create the merchant's single USDT TRC-20 settlement wallet.
+   * All payments are auto-converted to USDT and credited here.
+   */
+  async getOrCreateUsdtWallet(merchantId: string): Promise<any> {
+    return this.getOrCreateWallet(merchantId, 'USDT_TRC20' as CryptoSymbol);
+  }
+
+  /**
+   * Get the merchant's USDT TRC-20 balance.
+   */
+  async getUsdtBalance(merchantId: string): Promise<Decimal> {
+    const wallet = await this.getOrCreateUsdtWallet(merchantId);
+    return wallet.balance;
   }
 
   /**
