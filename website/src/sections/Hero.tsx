@@ -41,7 +41,7 @@ export default function Hero() {
       {/* Floating Shield Icon */}
       <div className="absolute bottom-[20%] left-[10%] w-10 h-10 opacity-40 pointer-events-none" style={{ animation: 'pulse-ring 3s ease-in-out infinite' }}>
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 4 L34 10 L34 22 C34 30 28 36 20 38 C12 36 6 30 6 22 L6 10 Z" fill="#22C55E" opacity="0.2" stroke="#22C55E" strokeWidth="1.5" opacity="0.6" />
+          <path d="M20 4 L34 10 L34 22 C34 30 28 36 20 38 C12 36 6 30 6 22 L6 10 Z" fill="#22C55E" stroke="#22C55E" strokeWidth="1.5" opacity="0.6" />
           <rect x="17" y="16" width="6" height="8" rx="1" fill="#22C55E" opacity="0.6" />
           <circle cx="20" cy="14" r="3" fill="none" stroke="#22C55E" strokeWidth="1.5" opacity="0.6" />
         </svg>

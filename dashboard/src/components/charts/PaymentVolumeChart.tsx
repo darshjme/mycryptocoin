@@ -69,7 +69,7 @@ const options: ApexCharts.ApexOptions = {
     position: 'top',
     horizontalAlign: 'left',
     labels: { colors: '#94a3b8' },
-    markers: { radius: 4 },
+    markers: { size: 4 },
   },
 };
 
