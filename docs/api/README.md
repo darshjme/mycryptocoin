@@ -20,6 +20,13 @@
 | [Webhooks](webhooks.md) | Real-time event notifications |
 | [Errors](errors.md) | Error codes and troubleshooting |
 | [Rate Limits](rate-limits.md) | Rate limiting per endpoint |
+| **New Endpoints** | |
+| Invoices | `POST/GET/PUT/DELETE /invoices` -- Professional crypto invoices with line items and tax |
+| Refunds | `POST /payments/:id/refund`, `GET /refunds` -- Full and partial refunds |
+| Checkout Sessions | `POST /checkout/session`, `GET /checkout/:id` -- Hosted checkout pages |
+| Exchange Rates | `GET /rates` -- Public exchange rates (no auth, 60s cache) |
+| Discounts | `POST/GET/DELETE /discounts` -- Coupon and discount code management |
+| White-Label | `GET/PUT /whitelabel` -- Customize checkout branding and domain |
 
 ---
 
@@ -220,38 +227,198 @@ Test mode data is completely isolated from production.
 
 ---
 
-## Supported Cryptocurrencies
+## Supported Cryptocurrencies (30+)
 
-| Symbol | Name | Networks | Min Withdrawal | Required Confirmations |
-|--------|------|----------|---------------|----------------------|
-| BTC | Bitcoin | bitcoin | 0.0001 | 3 |
-| ETH | Ethereum | ethereum | 0.001 | 12 |
-| USDT | Tether | ethereum, tron, bsc, polygon | 1.00 | 12 (ETH), 20 (TRX) |
-| USDC | USD Coin | ethereum, polygon, solana, arbitrum | 1.00 | 12 (ETH) |
-| BNB | BNB | bsc | 0.001 | 15 |
-| SOL | Solana | solana | 0.01 | 32 |
-| MATIC | Polygon | polygon | 1.00 | 128 |
-| DOGE | Dogecoin | dogecoin | 5.00 | 40 |
-| LTC | Litecoin | litecoin | 0.001 | 6 |
-| XRP | XRP | ripple | 0.10 | 1 |
-| ADA | Cardano | cardano | 1.00 | 15 |
-| DOT | Polkadot | polkadot | 1.00 | 25 |
-| AVAX | Avalanche | avalanche | 0.01 | 12 |
-| TRX | TRON | tron | 1.00 | 20 |
-| LINK | Chainlink | ethereum | 0.10 | 12 |
-| UNI | Uniswap | ethereum | 0.10 | 12 |
-| SHIB | Shiba Inu | ethereum | 100000 | 12 |
-| APE | ApeCoin | ethereum | 1.00 | 12 |
-| ARB | Arbitrum | arbitrum | 0.10 | 12 |
-| OP | Optimism | optimism | 0.10 | 12 |
+### Native Coins
+| Symbol | Name | Network | Min Withdrawal | Confirmations |
+|--------|------|---------|---------------|---------------|
+| BTC | Bitcoin | BITCOIN | 0.0001 | 3 |
+| BTC (LN) | Bitcoin Lightning | LIGHTNING | 0.000001 | 0 (instant) |
+| ETH | Ethereum | ETHEREUM | 0.001 | 12 |
+| SOL | Solana | SOLANA | 0.01 | 1 |
+| BNB | BNB | BSC | 0.01 | 15 |
+| TRX | TRON | TRON | 10 | 20 |
+| LTC | Litecoin | LITECOIN | 0.01 | 6 |
+| MATIC | Polygon | POLYGON | 1 | 30 |
+| AVAX | Avalanche | AVALANCHE | 0.1 | 12 |
+| DOT | Polkadot | POLKADOT | 1 | 12 |
+| ADA | Cardano | CARDANO | 5 | 15 |
+| DOGE | Dogecoin | DOGECOIN | 10 | 6 |
+| XRP | XRP | XRPL | 1 | 1 |
+| XMR | Monero | MONERO | 0.01 | 10 |
+| ZEC | Zcash | ZCASH | 0.01 | 10 |
+| BCH | Bitcoin Cash | BITCOIN_CASH | 0.01 | 6 |
+
+### L2 Rollups
+| Symbol | Name | Network | Min Withdrawal | Confirmations |
+|--------|------|---------|---------------|---------------|
+| ETH | Ethereum (Arbitrum) | ARBITRUM | 0.001 | 12 |
+| ETH | Ethereum (Optimism) | OPTIMISM | 0.001 | 12 |
+| ETH | Ethereum (Base) | BASE | 0.001 | 12 |
+
+### Stablecoins
+| Symbol | Name | Networks | Min Withdrawal | Confirmations |
+|--------|------|----------|---------------|---------------|
+| USDT | Tether | ETHEREUM, TRON | 10 | 12 (ETH), 20 (TRX) |
+| USDC | USD Coin | ETHEREUM, POLYGON, ARBITRUM, OPTIMISM, BASE | 10 | 12-30 |
+| DAI | Dai | ETHEREUM | 10 | 12 |
+
+### ERC-20 Tokens
+| Symbol | Name | Network | Min Withdrawal | Confirmations |
+|--------|------|---------|---------------|---------------|
+| LINK | Chainlink | ETHEREUM | 1 | 12 |
+| UNI | Uniswap | ETHEREUM | 1 | 12 |
+| AAVE | Aave | ETHEREUM | 0.1 | 12 |
+| SHIB | Shiba Inu | ETHEREUM | 1,000,000 | 12 |
+| PEPE | Pepe | ETHEREUM | 10,000,000 | 12 |
+
+### Custom Tokens
+Merchants can add any ERC-20, BEP-20, or TRC-20 token by providing the contract address.
+The API validates the contract and fetches token info (name, symbol, decimals) automatically.
 
 ---
 
 ## Supported Fiat Currencies
 
-USD, EUR, GBP, INR, AED, SGD, AUD, CAD, JPY
+USD, EUR, GBP, INR, AED, SGD, AUD, CAD, JPY, CHF, CNY, KRW, BRL, MXN, ZAR, TRY, SEK, NOK, DKK, PLN, THB, IDR, MYR, PHP, VND, NGN, KES, ARS, CLP, COP, PEN, UAH, CZK, HUF, ILS, TWD, HKD, NZD, RUB, SAR, QAR, BHD, KWD, OMR, EGP, PKR, BDT, LKR
 
 Payments are priced in fiat and converted to crypto at the current exchange rate at the time of payment creation.
+
+---
+
+## Lightning Network
+
+Near-instant Bitcoin payments via Lightning Network (BOLT11):
+
+```bash
+# Create a Lightning payment
+curl -X POST https://api.mycrypto.co.in/v1/payments \
+  -H "X-API-Key: mcc_live_..." \
+  -d '{"network": "LIGHTNING", "token": "BTC", "amount": "0.001", "currency": "BTC"}'
+```
+
+- Settlement in under 3 seconds
+- Near-zero fees
+- Minimum amount: 1 satoshi (0.00000001 BTC)
+- No confirmations required
+
+---
+
+## Hosted Checkout
+
+Create a hosted checkout session that renders a beautiful payment page:
+
+```bash
+# Create checkout session
+curl -X POST https://api.mycrypto.co.in/v1/checkout/session \
+  -H "Authorization: Bearer ..." \
+  -d '{"amount": "99.99", "currency": "USD", "displayMode": "popup"}'
+
+# Response: { "data": { "sessionId": "cs_abc123", "checkoutUrl": "https://mycrypto.co.in/pay/cs_abc123" } }
+```
+
+**Display Modes:**
+- `page` -- Full redirect to hosted checkout
+- `popup` -- Embed `<script src="https://mycrypto.co.in/embed.js">` and call `MyCryptoCoin.checkout()`
+- `inline` -- Render checkout inline with `MyCryptoCoin.renderInline(element, opts)`
+- `hidden` -- API-only, no UI (merchant builds own checkout)
+
+---
+
+## Invoices
+
+Generate professional invoices with line items, tax, and email delivery:
+
+```bash
+POST /invoices              # Create invoice
+GET  /invoices              # List invoices
+GET  /invoices/:id          # Get single invoice
+PUT  /invoices/:id          # Update invoice (DRAFT only)
+POST /invoices/:id/send     # Email invoice to customer
+DELETE /invoices/:id        # Cancel invoice
+```
+
+Invoice statuses: `DRAFT`, `SENT`, `PAID`, `OVERDUE`, `CANCELLED`, `REFUNDED`
+
+---
+
+## Refunds
+
+Initiate full or partial refunds for completed payments:
+
+```bash
+POST /payments/:id/refund   # Initiate refund
+GET  /refunds               # List refunds
+GET  /refunds/:id           # Get single refund
+```
+
+Options: refund in original crypto or USDT. Webhook event: `refund.completed`.
+
+---
+
+## Discount Codes
+
+Create and validate discount/coupon codes:
+
+```bash
+POST /discounts             # Create discount
+GET  /discounts             # List discounts
+POST /discounts/validate    # Validate code against amount
+DELETE /discounts/:id       # Deactivate
+```
+
+Supports: percentage, fixed amount, max uses, per-customer limits, expiry dates.
+
+---
+
+## Exchange Rates (Public)
+
+No authentication required:
+
+```bash
+GET /rates       # All rates (cached 60s)
+GET /rates/BTC   # Specific crypto
+```
+
+Response: `{ "crypto": "BITCOIN:BTC", "usdRate": 65000, "usdtRate": 65000, "btcRate": 1, "change24h": 2.5, "lastUpdated": "..." }`
+
+---
+
+## White-Label
+
+Customize the checkout experience:
+
+```bash
+GET  /whitelabel                # Get config
+PUT  /whitelabel                # Update config
+POST /whitelabel/verify-domain  # Verify CNAME for custom domain
+```
+
+Options: logo, colors, custom domain (CNAME), remove branding (premium), custom email sender name.
+
+---
+
+## Testnet Support
+
+Toggle between testnet and mainnet via API key prefix:
+- `mcc_test_...` -- Uses testnets (Bitcoin Testnet3, Ethereum Sepolia, Solana Devnet, TRON Nile, BSC Testnet, etc.)
+- `mcc_live_...` -- Uses mainnet
+
+---
+
+## Multi-Language Support
+
+40+ languages supported with RTL detection (Arabic, Hebrew, Persian, Urdu). Set language via `Accept-Language` header or `?lang=` query parameter.
+
+---
+
+## Integrations
+
+| Platform | Guide |
+|----------|-------|
+| Shopify | [Shopify Setup Guide](../guides/shopify-setup.md) |
+| WordPress | [WordPress Setup Guide](../guides/wordpress-setup.md) |
+| Custom API | [Integration Guide](../guides/integration-guide.md) |
 
 ---
 

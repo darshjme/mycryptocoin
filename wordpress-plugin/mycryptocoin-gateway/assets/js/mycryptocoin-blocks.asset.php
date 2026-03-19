@@ -8,6 +8,7 @@
 return array(
 	'dependencies' => array(
 		'wp-element',
+		'wp-i18n',
 		'wc-blocks-registry',
 		'wc-settings',
 	),

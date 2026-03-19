@@ -133,7 +133,7 @@ export class NotificationService {
   }
 
   /**
-   * Send a general alert to a merchant.
+   * Send a general alert to a merchant via WhatsApp, email fallback, and WebSocket.
    */
   async sendAlert(
     merchant: {
@@ -145,11 +145,21 @@ export class NotificationService {
     subject: string,
     message: string,
   ): Promise<void> {
+    let whatsappSent = false;
     const whatsappNum = merchant.whatsappNumber || merchant.phone;
     if (whatsappNum) {
-      await whatsappService
+      whatsappSent = await whatsappService
         .sendMessage(whatsappNum, `*${subject}*\n\n${message}`)
-        .catch(() => {});
+        .catch(() => false);
+    }
+
+    // Email fallback if WhatsApp failed or unavailable
+    if (!whatsappSent) {
+      await emailService
+        .sendOtpEmail(merchant.email, `${subject}\n\n${message}`)
+        .catch((err) =>
+          logger.error('Email alert fallback failed', { error: err }),
+        );
     }
 
     try {
