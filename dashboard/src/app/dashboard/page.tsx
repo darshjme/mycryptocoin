@@ -97,7 +97,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               {/* Dropdown - matching CryptoZone custom-dropdown */}
-              <button className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors">
+              <button aria-label="More options" className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors">
                 <svg width="6" height="20" viewBox="0 0 6 20" fill="none">
                   <circle cx="3" cy="3" r="2" fill="currentColor"/>
                   <circle cx="3" cy="10" r="2" fill="currentColor"/>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
               <div className="glass-card p-0 overflow-hidden">
                 <div className="flex items-center justify-between p-5 pb-0">
                   <h2 className="text-base font-bold text-white">Crypto Allocation</h2>
-                  <button className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors">
+                  <button aria-label="More options" className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors">
                     <svg width="6" height="20" viewBox="0 0 6 20" fill="none">
                       <circle cx="3" cy="3" r="2" fill="currentColor"/>
                       <circle cx="3" cy="10" r="2" fill="currentColor"/>

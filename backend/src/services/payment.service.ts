@@ -264,49 +264,72 @@ export class PaymentService {
     const token = payment.token as TokenSymbol;
     const originalAmount = new Decimal(payment.cryptoAmount || payment.amount);
 
-    // Convert received crypto to USDT equivalent at current rate
-    const { usdtAmount, rate: exchangeRate } = await conversionService.convertToUsdt(
-      originalAmount,
-      token,
-    );
+    // ===================================================================
+    // Full Conversion Engine: creates Conversion record in DB, handles
+    // CEX/DEX/virtual/passthrough swap, credits merchant USDT balance,
+    // queues platform fee disbursement to owner wallet.
+    //
+    // The Conversion record provides a complete audit trail:
+    // rates, fees, tx hashes, timestamps, slippage, method used.
+    // ===================================================================
+    let conversionResult;
+    try {
+      conversionResult = await conversionService.executeConversion(payment.id);
+    } catch (conversionError) {
+      logger.error(`Conversion engine failed for payment ${payment.id} — falling back to legacy flow`, {
+        error: conversionError,
+      });
 
-    // Calculate fee on the USDT amount (0.5%)
-    const { netAmount, feeAmount } = feeService.calculateFee(usdtAmount);
+      // Fallback: simple rate conversion + fee calculation without full Conversion record
+      const { usdtAmount, rate: exchangeRate } = await conversionService.convertToUsdt(
+        originalAmount,
+        token,
+      );
+      const { netAmount, feeAmount } = feeService.calculateFee(usdtAmount);
 
-    // Atomic transaction: check status + record fee + credit USDT balance + mark paid
-    // This prevents double-credits from concurrent calls.
+      conversionResult = {
+        grossUsdtAmount: usdtAmount,
+        netUsdtAmount: netAmount,
+        platformFeeAmount: feeAmount,
+        merchantCredited: netAmount,
+        exchangeRate,
+        rateSource: 'fallback',
+        conversionMethod: 'fallback',
+        conversionFee: new Decimal(0),
+        status: 'COMPLETED',
+      };
+    }
+
+    const {
+      grossUsdtAmount,
+      platformFeeAmount,
+      merchantCredited,
+      exchangeRate,
+    } = conversionResult;
+
+    // Atomic transaction: check status + record fee + mark payment paid
+    // The Conversion engine already credited the wallet, so we only update
+    // payment status + legacy FeeRecord here.
     const alreadyCompleted = await prisma.$transaction(async (tx) => {
-      // Re-read payment inside transaction to check current status (idempotency guard)
       const current = await tx.payment.findUnique({
         where: { id: payment.id },
       });
 
       if (!current || current.status === PaymentStatus.PAID || current.status === PaymentStatus.OVERPAID) {
-        // Already processed — no-op
         return true;
       }
 
-      // Record fee in USDT
+      // Legacy FeeRecord (kept for backward compatibility with admin dashboard)
       await tx.feeRecord.create({
         data: {
           paymentId: payment.id,
           merchantId: payment.merchantId,
           network: 'TRON' as CryptoNetwork,
           token: 'USDT' as TokenSymbol,
-          grossAmount: usdtAmount,
+          grossAmount: grossUsdtAmount,
           feeRate: new Decimal(PLATFORM_FEE_RATE),
-          feeAmount,
-          netAmount,
-        },
-      });
-
-      // Credit merchant's SINGLE USDT TRC-20 wallet balance atomically
-      // All merchants now settle in USDT regardless of which crypto was received
-      await tx.wallet.updateMany({
-        where: { merchantId: payment.merchantId, network: 'TRON' as CryptoNetwork, token: 'USDT' as TokenSymbol },
-        data: {
-          balance: { increment: netAmount },
-          totalReceived: { increment: netAmount },
+          feeAmount: platformFeeAmount,
+          netAmount: merchantCredited,
         },
       });
 
@@ -315,7 +338,7 @@ export class PaymentService {
         where: { id: payment.id },
         data: {
           status: PaymentStatus.PAID,
-          fee: feeAmount,
+          fee: platformFeeAmount,
           exchangeRate,
           receivedAmount: originalAmount,
           paidAt: new Date(),
@@ -330,20 +353,21 @@ export class PaymentService {
       return;
     }
 
-    // Non-critical post-processing outside transaction (idempotent or best-effort)
-    // Remove from monitoring
+    // Non-critical post-processing outside transaction
     await redis.srem('payments:monitoring', payment.id);
     await redis.srem('payments:confirming', payment.id);
 
-    // Dispatch webhook with conversion details
+    // Dispatch webhook with full conversion details
     await webhookService.dispatch(payment.merchantId, 'payment.completed', {
       paymentId: payment.id,
       originalCrypto: token,
       originalAmount: originalAmount.toString(),
       exchangeRate: exchangeRate.toString(),
-      usdtAmount: usdtAmount.toString(),
-      feeAmount: feeAmount.toString(),
-      netCredited: netAmount.toString(),
+      usdtAmount: grossUsdtAmount.toString(),
+      feeAmount: platformFeeAmount.toString(),
+      netCredited: merchantCredited.toString(),
+      conversionMethod: conversionResult.conversionMethod,
+      conversionFee: conversionResult.conversionFee.toString(),
       settlementCurrency: 'USDT',
       settlementNetwork: 'TRC-20',
       network,
@@ -368,7 +392,9 @@ export class PaymentService {
     }
 
     logger.info(
-      `Payment completed: ${payment.id} — ${originalAmount} ${token} -> ${usdtAmount} USDT (fee: ${feeAmount} USDT, net: ${netAmount} USDT)`,
+      `Payment completed: ${payment.id} — ${originalAmount} ${token} -> ` +
+      `${grossUsdtAmount} USDT (fee: ${platformFeeAmount}, net: ${merchantCredited}, ` +
+      `method: ${conversionResult.conversionMethod})`,
     );
   }
 
