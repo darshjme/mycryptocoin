@@ -50,7 +50,7 @@ export default function DashboardPage() {
                   Accept Crypto Payments Instantly
                 </h2>
                 <p className="text-slate-400 mt-2 max-w-lg text-sm">
-                  MyCryptoCoin payment gateway lets you accept 100+ cryptocurrencies. Low fees, instant settlements, and easy integration.
+                  Accept 100+ cryptocurrencies — all payments auto-converted to USDT TRC-20. No volatility risk, instant settlement.
                 </p>
                 <Link
                   href="/integration"

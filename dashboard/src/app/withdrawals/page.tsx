@@ -2,12 +2,15 @@
 
 import React from 'react';
 
+// All withdrawals are USDT TRC-20 to TRON addresses
 const withdrawals = Array.from({ length: 10 }, (_, i) => ({
   id: `WDR-${3000 + i}`,
-  crypto: ['BTC', 'ETH', 'USDT', 'LTC', 'SOL'][i % 5],
+  crypto: 'USDT',
+  network: 'TRC-20',
   amount: `$${(Math.random() * 5000 + 100).toFixed(2)}`,
-  address: `${['bc1q', '0x7a', 'TX8k', 'ltc1', '7Kf4'][i % 5]}...${Math.random().toString(36).slice(2, 6)}`,
+  address: `T${['X8kR5', 'QnLF7', 'HjkP2', 'YbRt9', 'MxNw4'][i % 5]}...${Math.random().toString(36).slice(2, 6)}`,
   date: `Mar ${18 - (i % 10)}, 2026`,
+  networkFee: '~1.00 USDT',
   status: ['completed', 'pending', 'completed', 'processing', 'failed'][i % 5],
   statusColor: ['success', 'warning', 'success', 'info', 'danger'][i % 5],
 }));
@@ -19,8 +22,8 @@ export default function WithdrawalsPage() {
         <div className="p-5 border-b border-[rgba(99,102,241,0.08)]">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <h4 className="text-lg font-bold text-white">Withdrawal Requests</h4>
-            <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-semibold shadow-lg shadow-indigo-500/20 hover:from-indigo-400 hover:to-purple-400 transition-all">
-              New Withdrawal
+            <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-semibold shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-400 transition-all">
+              Withdraw USDT TRC-20
             </button>
           </div>
         </div>
@@ -50,17 +53,11 @@ export default function WithdrawalsPage() {
                   <td className="px-5 py-3 text-sm text-slate-400">{w.date}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${
-                        w.crypto === 'BTC' ? 'bg-amber-500/20 text-amber-400' :
-                        w.crypto === 'ETH' ? 'bg-indigo-500/20 text-indigo-400' :
-                        w.crypto === 'USDT' ? 'bg-emerald-500/20 text-emerald-400' :
-                        w.crypto === 'LTC' ? 'bg-slate-500/20 text-slate-400' :
-                        'bg-purple-500/20 text-purple-400'
-                      }`}>
-                        {w.crypto.slice(0, 2)}
+                      <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                        US
                       </span>
                       <div>
-                        <h5 className="text-sm font-medium text-slate-200">{w.crypto}</h5>
+                        <h5 className="text-sm font-medium text-slate-200">USDT <span className="text-xs text-slate-500">TRC-20</span></h5>
                         <span className="text-xs text-slate-500 font-mono">{w.address}</span>
                       </div>
                     </div>

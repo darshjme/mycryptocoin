@@ -32,8 +32,8 @@ export default function WithdrawalsPage() {
     <div className="animate-in">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Withdrawals</h1>
-          <p className="text-sm text-slate-400 mt-1">Manage withdrawal requests from merchants</p>
+          <h1 className="text-2xl font-bold text-white">Withdrawals (USDT TRC-20)</h1>
+          <p className="text-sm text-slate-400 mt-1">All merchant withdrawals are USDT TRC-20 to TRON addresses</p>
         </div>
         {pendingCount > 0 && (
           <div className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.2)' }}>

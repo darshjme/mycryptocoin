@@ -15,11 +15,9 @@ interface RevenueData {
 
 const mockRevenueData: RevenueData = {
   totalRevenue: 128904,
+  // All revenue is now in USDT; breakdown shows source crypto of original payments
   revenueByCrypto: [
-    { crypto: 'USDT', amount: 58006, percentage: 45 },
-    { crypto: 'BTC', amount: 32226, percentage: 25 },
-    { crypto: 'ETH', amount: 25781, percentage: 20 },
-    { crypto: 'SOL', amount: 12891, percentage: 10 },
+    { crypto: 'USDT (all fees)', amount: 128904, percentage: 100 },
   ],
   revenueByPeriod: Array.from({ length: 30 }, (_, i) => {
     const date = new Date();
@@ -72,8 +70,8 @@ export default function RevenuePage() {
     <div className="animate-in">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Revenue Dashboard</h1>
-          <p className="text-sm text-slate-400 mt-1">Fee revenue analytics and merchant performance</p>
+          <h1 className="text-2xl font-bold text-white">Revenue Dashboard (USDT)</h1>
+          <p className="text-sm text-slate-400 mt-1">All fee revenue in USDT -- auto-converted from all crypto payments</p>
         </div>
         <div className="cz-tabs">
           {(['7d', '30d', '90d'] as const).map((p) => (
