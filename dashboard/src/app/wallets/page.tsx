@@ -206,7 +206,7 @@ export default function WalletsPage() {
         {/* Allocation Chart */}
         <div className="glass-card p-0 overflow-hidden">
           <div className="p-5 pb-0">
-            <h2 className="text-sm font-bold text-white">Crypto Allocation</h2>
+            <h2 className="text-sm font-bold text-white">Received Crypto Breakdown</h2>
           </div>
           <div className="p-5">
             <CryptoAllocationChart />

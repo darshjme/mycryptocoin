@@ -33,62 +33,30 @@ export const DEMO_USER = {
 };
 
 // ── Wallets ─────────────────────────────────────────────────────────────────
+// Merchants have a SINGLE USDT TRC-20 settlement wallet.
+// All received crypto is auto-converted to USDT at confirmation time.
 export const DEMO_WALLETS = [
   {
-    crypto: 'BTC',
-    network: 'BITCOIN',
-    balance: '2.45821',
-    pendingBalance: '0.15000',
-    totalReceived: '15.78432',
-    totalWithdrawn: '13.17611',
-    usdValue: 168432.5,
-    depositAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-    autoWithdraw: { enabled: true, address: 'bc1q9h5yjqka3mz2f3hp4x5ds4mfcgkr0z88g7n54v', threshold: '1.0' },
-  },
-  {
-    crypto: 'ETH',
-    network: 'ETHEREUM',
-    balance: '18.92541',
-    pendingBalance: '2.50000',
-    totalReceived: '156.33210',
-    totalWithdrawn: '134.90669',
-    usdValue: 62154.85,
-    depositAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68',
-    autoWithdraw: { enabled: true, address: '0xA1b2C3d4E5f6789012345678901234567890AbCd', threshold: '10.0' },
-  },
-  {
     crypto: 'USDT',
-    network: 'ETHEREUM',
-    balance: '45892.50',
+    network: 'TRON',
+    networkDisplay: 'TRC-20',
+    balance: '350136.94',
     pendingBalance: '5000.00',
     totalReceived: '892451.00',
-    totalWithdrawn: '841558.50',
-    usdValue: 45892.5,
-    depositAddress: '0x8Fc2A2b4E3F0C6e5D9b7A1c3E5F7a9B2d4C6e8F0',
-    autoWithdraw: { enabled: false, address: '', threshold: '0' },
+    totalWithdrawn: '537314.06',
+    usdValue: 350136.94,
+    depositAddress: 'TX8kR5f9bM3qJh4LnWs2TpYc7vXdZeK6Fg',
+    autoWithdraw: { enabled: true, address: 'TQnLF7pVcR8kBxN3mZj6Yw4sHdX9tLfG2e', threshold: '50000' },
   },
-  {
-    crypto: 'BNB',
-    network: 'BSC',
-    balance: '45.8921',
-    pendingBalance: '0.00000',
-    totalReceived: '234.55100',
-    totalWithdrawn: '188.65890',
-    usdValue: 27535.26,
-    depositAddress: '0xBb2a35Cc6634C0532925a3b844Bc9e7595f2bD68',
-    autoWithdraw: { enabled: false, address: '', threshold: '0' },
-  },
-  {
-    crypto: 'SOL',
-    network: 'SOLANA',
-    balance: '312.5421',
-    pendingBalance: '25.00000',
-    totalReceived: '1892.33000',
-    totalWithdrawn: '1554.78790',
-    usdValue: 46881.31,
-    depositAddress: '7RoSF9fUNBVFDp311TnyFz2prhP5FxXFZB7nN8EFcTT8',
-    autoWithdraw: { enabled: true, address: 'So1ana7xMerchant9Wa11et4ddre55Here12345678', threshold: '100.0' },
-  },
+];
+
+// Deposit addresses for customers to pay in various cryptos (still per-crypto)
+export const DEMO_DEPOSIT_ADDRESSES = [
+  { crypto: 'BTC', network: 'BITCOIN', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh' },
+  { crypto: 'ETH', network: 'ETHEREUM', address: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68' },
+  { crypto: 'USDT', network: 'TRON', address: 'TX8kR5f9bM3qJh4LnWs2TpYc7vXdZeK6Fg' },
+  { crypto: 'BNB', network: 'BSC', address: '0xBb2a35Cc6634C0532925a3b844Bc9e7595f2bD68' },
+  { crypto: 'SOL', network: 'SOLANA', address: '7RoSF9fUNBVFDp311TnyFz2prhP5FxXFZB7nN8EFcTT8' },
 ];
 
 // ── Helper: date N days ago ─────────────────────────────────────────────────
@@ -161,10 +129,11 @@ export const DEMO_TRANSACTIONS = [
 ];
 
 // ── 30 Payments ─────────────────────────────────────────────────────────────
+// Each payment now tracks: originalCrypto, originalAmount, exchangeRate, usdtAmount, fee, netCredited
 export const DEMO_PAYMENTS = [
-  { id: 'pay_001', crypto: 'BTC', network: 'BITCOIN', amount: '0.52340', requestedAmount: '35860.00', requestedCurrency: 'USD', status: 'COMPLETED', customerEmail: 'alice@example.com', description: 'Order #10421 - Electronics Bundle', metadata: { orderId: '10421', items: 3 }, txHash: txHash('0x', 101), createdAt: daysAgo(0, 9, 15), paidAt: daysAgo(0, 9, 45), expiresAt: daysAgo(0, 8, 15) },
-  { id: 'pay_002', crypto: 'ETH', network: 'ETHEREUM', amount: '3.20000', requestedAmount: '10512.00', requestedCurrency: 'USD', status: 'COMPLETED', customerEmail: 'bob@techcorp.io', description: 'Order #10422 - Server Rack', metadata: { orderId: '10422', items: 1 }, txHash: txHash('0x', 102), createdAt: daysAgo(0, 7, 30), paidAt: daysAgo(0, 7, 38), expiresAt: daysAgo(0, 6, 30) },
-  { id: 'pay_003', crypto: 'USDT', network: 'ETHEREUM', amount: '12500.00', requestedAmount: '12500.00', requestedCurrency: 'USD', status: 'CONFIRMING', customerEmail: 'chen@globalfreight.com', description: 'Order #10423 - Bulk Components', metadata: { orderId: '10423', items: 50 }, txHash: txHash('0x', 103), createdAt: daysAgo(0, 11, 20), paidAt: null, expiresAt: daysAgo(-1, 11, 20) },
+  { id: 'pay_001', crypto: 'BTC', network: 'BITCOIN', amount: '0.52340', requestedAmount: '35860.00', requestedCurrency: 'USD', exchangeRate: '68550.00', usdtAmount: '35860.82', fee: '179.30', netCredited: '35681.52', status: 'COMPLETED', customerEmail: 'alice@example.com', description: 'Order #10421 - Electronics Bundle', metadata: { orderId: '10421', items: 3 }, txHash: txHash('0x', 101), createdAt: daysAgo(0, 9, 15), paidAt: daysAgo(0, 9, 45), expiresAt: daysAgo(0, 8, 15) },
+  { id: 'pay_002', crypto: 'ETH', network: 'ETHEREUM', amount: '3.20000', requestedAmount: '10512.00', requestedCurrency: 'USD', exchangeRate: '3285.00', usdtAmount: '10512.00', fee: '52.56', netCredited: '10459.44', status: 'COMPLETED', customerEmail: 'bob@techcorp.io', description: 'Order #10422 - Server Rack', metadata: { orderId: '10422', items: 1 }, txHash: txHash('0x', 102), createdAt: daysAgo(0, 7, 30), paidAt: daysAgo(0, 7, 38), expiresAt: daysAgo(0, 6, 30) },
+  { id: 'pay_003', crypto: 'USDT', network: 'TRON', amount: '12500.00', requestedAmount: '12500.00', requestedCurrency: 'USD', exchangeRate: '1.00', usdtAmount: '12500.00', fee: '62.50', netCredited: '12437.50', status: 'CONFIRMING', customerEmail: 'chen@globalfreight.com', description: 'Order #10423 - Bulk Components', metadata: { orderId: '10423', items: 50 }, txHash: txHash('0x', 103), createdAt: daysAgo(0, 11, 20), paidAt: null, expiresAt: daysAgo(-1, 11, 20) },
   { id: 'pay_004', crypto: 'SOL', network: 'SOLANA', amount: '85.00000', requestedAmount: '12750.00', requestedCurrency: 'USD', status: 'COMPLETED', customerEmail: 'diana@startupinc.co', description: 'Order #10424 - SaaS License Annual', metadata: { orderId: '10424', plan: 'enterprise' }, txHash: txHash('0x', 104), createdAt: daysAgo(1, 14, 10), paidAt: daysAgo(1, 14, 11), expiresAt: daysAgo(0, 14, 10) },
   { id: 'pay_005', crypto: 'BNB', network: 'BSC', amount: '12.50000', requestedAmount: '7500.00', requestedCurrency: 'USD', status: 'COMPLETED', customerEmail: 'eric@devagency.com', description: 'Order #10425 - Consulting Package', metadata: { orderId: '10425', hours: 40 }, txHash: txHash('0x', 105), createdAt: daysAgo(1, 10, 5), paidAt: daysAgo(1, 10, 6), expiresAt: daysAgo(0, 10, 5) },
   { id: 'pay_006', crypto: 'BTC', network: 'BITCOIN', amount: '0.15000', requestedAmount: '10282.50', requestedCurrency: 'USD', status: 'AWAITING_PAYMENT', customerEmail: 'frank@bigretail.com', description: 'Order #10426 - Inventory Restock', metadata: { orderId: '10426', items: 120 }, txHash: null, createdAt: daysAgo(0, 12, 45), paidAt: null, expiresAt: daysAgo(-1, 12, 45) },
@@ -195,17 +164,18 @@ export const DEMO_PAYMENTS = [
 ];
 
 // ── 10 Withdrawals ──────────────────────────────────────────────────────────
+// All withdrawals are now USDT TRC-20 to TRON addresses
 export const DEMO_WITHDRAWALS = [
-  { id: 'wd_001', crypto: 'BTC', network: 'BITCOIN', amount: '1.00000', fee: '0.00010', netAmount: '0.99990', toAddress: 'bc1q9h5yjqka3mz2f3hp4x5ds4mfcgkr0z88g7n54v', status: 'COMPLETED', txHash: txHash('0x', 201), createdAt: daysAgo(0, 6, 0), processedAt: daysAgo(0, 6, 55) },
-  { id: 'wd_002', crypto: 'ETH', network: 'ETHEREUM', amount: '5.00000', fee: '0.00250', netAmount: '4.99750', toAddress: '0xA1b2C3d4E5f6789012345678901234567890AbCd', status: 'PENDING', txHash: null, createdAt: daysAgo(1, 8, 0), processedAt: null },
-  { id: 'wd_003', crypto: 'USDT', network: 'ETHEREUM', amount: '25000.00', fee: '5.00', netAmount: '24995.00', toAddress: '0xA1b2C3d4E5f6789012345678901234567890AbCd', status: 'COMPLETED', txHash: txHash('0x', 203), createdAt: daysAgo(2, 9, 0), processedAt: daysAgo(2, 9, 15) },
-  { id: 'wd_004', crypto: 'BNB', network: 'BSC', amount: '20.00000', fee: '0.01000', netAmount: '19.99000', toAddress: '0xBb2a35Cc6634C0532925a3b844Bc9e7595f2bD68', status: 'COMPLETED', txHash: txHash('0x', 204), createdAt: daysAgo(3, 14, 0), processedAt: daysAgo(3, 14, 5) },
-  { id: 'wd_005', crypto: 'ETH', network: 'ETHEREUM', amount: '10.00000', fee: '0.00500', netAmount: '9.99500', toAddress: '0xA1b2C3d4E5f6789012345678901234567890AbCd', status: 'COMPLETED', txHash: txHash('0x', 205), createdAt: daysAgo(5, 8, 0), processedAt: daysAgo(5, 8, 10) },
-  { id: 'wd_006', crypto: 'SOL', network: 'SOLANA', amount: '100.00000', fee: '0.05000', netAmount: '99.95000', toAddress: 'So1ana7xMerchant9Wa11et4ddre55Here12345678', status: 'COMPLETED', txHash: txHash('0x', 206), createdAt: daysAgo(6, 10, 0), processedAt: daysAgo(6, 10, 1) },
-  { id: 'wd_007', crypto: 'USDT', network: 'ETHEREUM', amount: '50000.00', fee: '10.00', netAmount: '49990.00', toAddress: '0xA1b2C3d4E5f6789012345678901234567890AbCd', status: 'COMPLETED', txHash: txHash('0x', 207), createdAt: daysAgo(10, 10, 0), processedAt: daysAgo(10, 10, 12) },
-  { id: 'wd_008', crypto: 'BTC', network: 'BITCOIN', amount: '2.00000', fee: '0.00020', netAmount: '1.99980', toAddress: 'bc1q9h5yjqka3mz2f3hp4x5ds4mfcgkr0z88g7n54v', status: 'COMPLETED', txHash: txHash('0x', 208), createdAt: daysAgo(13, 7, 0), processedAt: daysAgo(13, 7, 50) },
-  { id: 'wd_009', crypto: 'ETH', network: 'ETHEREUM', amount: '15.00000', fee: '0.00750', netAmount: '14.99250', toAddress: '0xA1b2C3d4E5f6789012345678901234567890AbCd', status: 'PROCESSING', txHash: null, createdAt: daysAgo(18, 14, 0), processedAt: null },
-  { id: 'wd_010', crypto: 'SOL', network: 'SOLANA', amount: '200.00000', fee: '0.10000', netAmount: '199.90000', toAddress: 'So1ana7xMerchant9Wa11et4ddre55Here12345678', status: 'FAILED', txHash: null, createdAt: daysAgo(23, 12, 0), processedAt: null },
+  { id: 'wd_001', crypto: 'USDT', network: 'TRON', amount: '68550.00', fee: '1.00', netAmount: '68549.00', toAddress: 'TQnLF7pVcR8kBxN3mZj6Yw4sHdX9tLfG2e', status: 'COMPLETED', txHash: txHash('0x', 201), createdAt: daysAgo(0, 6, 0), processedAt: daysAgo(0, 6, 55) },
+  { id: 'wd_002', crypto: 'USDT', network: 'TRON', amount: '16425.00', fee: '1.00', netAmount: '16424.00', toAddress: 'THjkP2wXq9mR4LnBs3TpYc7vZdK6FgE8Nx', status: 'PENDING', txHash: null, createdAt: daysAgo(1, 8, 0), processedAt: null },
+  { id: 'wd_003', crypto: 'USDT', network: 'TRON', amount: '25000.00', fee: '1.00', netAmount: '24999.00', toAddress: 'TYbRt9kWs5mN2qJh4LpXc7vZdFgE8NxR3a', status: 'COMPLETED', txHash: txHash('0x', 203), createdAt: daysAgo(2, 9, 0), processedAt: daysAgo(2, 9, 15) },
+  { id: 'wd_004', crypto: 'USDT', network: 'TRON', amount: '12000.00', fee: '1.00', netAmount: '11999.00', toAddress: 'TMxNw4pVcR8kBxN3mZj6Yw4sHdX9tLfG2e', status: 'COMPLETED', txHash: txHash('0x', 204), createdAt: daysAgo(3, 14, 0), processedAt: daysAgo(3, 14, 5) },
+  { id: 'wd_005', crypto: 'USDT', network: 'TRON', amount: '32850.00', fee: '1.00', netAmount: '32849.00', toAddress: 'TQnLF7pVcR8kBxN3mZj6Yw4sHdX9tLfG2e', status: 'COMPLETED', txHash: txHash('0x', 205), createdAt: daysAgo(5, 8, 0), processedAt: daysAgo(5, 8, 10) },
+  { id: 'wd_006', crypto: 'USDT', network: 'TRON', amount: '15000.00', fee: '1.00', netAmount: '14999.00', toAddress: 'THjkP2wXq9mR4LnBs3TpYc7vZdK6FgE8Nx', status: 'COMPLETED', txHash: txHash('0x', 206), createdAt: daysAgo(6, 10, 0), processedAt: daysAgo(6, 10, 1) },
+  { id: 'wd_007', crypto: 'USDT', network: 'TRON', amount: '50000.00', fee: '1.00', netAmount: '49999.00', toAddress: 'TYbRt9kWs5mN2qJh4LpXc7vZdFgE8NxR3a', status: 'COMPLETED', txHash: txHash('0x', 207), createdAt: daysAgo(10, 10, 0), processedAt: daysAgo(10, 10, 12) },
+  { id: 'wd_008', crypto: 'USDT', network: 'TRON', amount: '137100.00', fee: '1.00', netAmount: '137099.00', toAddress: 'TMxNw4pVcR8kBxN3mZj6Yw4sHdX9tLfG2e', status: 'COMPLETED', txHash: txHash('0x', 208), createdAt: daysAgo(13, 7, 0), processedAt: daysAgo(13, 7, 50) },
+  { id: 'wd_009', crypto: 'USDT', network: 'TRON', amount: '49275.00', fee: '1.00', netAmount: '49274.00', toAddress: 'TQnLF7pVcR8kBxN3mZj6Yw4sHdX9tLfG2e', status: 'PROCESSING', txHash: null, createdAt: daysAgo(18, 14, 0), processedAt: null },
+  { id: 'wd_010', crypto: 'USDT', network: 'TRON', amount: '30000.00', fee: '1.00', netAmount: '29999.00', toAddress: 'THjkP2wXq9mR4LnBs3TpYc7vZdK6FgE8Nx', status: 'FAILED', txHash: null, createdAt: daysAgo(23, 12, 0), processedAt: null },
 ];
 
 // ── API Keys ────────────────────────────────────────────────────────────────
@@ -222,9 +192,10 @@ export const DEMO_WEBHOOKS = [
 
 // ── Dashboard Stats ─────────────────────────────────────────────────────────
 export const DEMO_DASHBOARD_STATS = {
-  totalReceived: '$351,896.42',
-  totalFees: '$1,759.48',
-  availableBalance: '$350,136.94',
+  totalReceived: '351,896.42 USDT',
+  totalFees: '1,759.48 USDT',
+  availableBalance: '350,136.94 USDT',
+  settlementCurrency: 'USDT TRC-20',
   activePayments: 3,
   volumeChart: {
     labels: Array.from({ length: 30 }, (_, i) => {

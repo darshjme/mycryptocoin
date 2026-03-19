@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const statCards = [
     { title: 'Total Merchants', value: stats?.totalMerchants || 0, icon: 'store', color: '#6366f1', change: `${stats?.activeMerchants || 0} active`, changeColor: '#10b981' },
     { title: 'Volume (24h)', value: `$${(Number(stats?.volume24h || 0) / 1000).toFixed(1)}K`, icon: 'show_chart', color: '#3b82f6', change: '+12.5%', changeColor: '#10b981' },
-    { title: 'Fees Earned (24h)', value: `$${Number(stats?.feesEarned24h || 0).toFixed(2)}`, icon: 'paid', color: '#10b981', change: '+8.2%', changeColor: '#10b981' },
+    { title: 'Fees Earned (24h) USDT', value: `$${Number(stats?.feesEarned24h || 0).toFixed(2)}`, icon: 'paid', color: '#10b981', change: '+8.2%', changeColor: '#10b981' },
     { title: 'Active Payments', value: stats?.activePayments || 0, icon: 'payments', color: '#f59e0b', change: `${stats?.pendingWithdrawals || 0} pending WD`, changeColor: '#f59e0b' },
   ];
 
@@ -94,7 +94,7 @@ export default function DashboardPage() {
                     <h4 className="text-lg font-bold text-white">${((stats?.volume30d || 0) / 1000000).toFixed(2)}M</h4>
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400">Fees (7d)</span>
+                    <span className="text-xs text-slate-400">Fees (7d) USDT</span>
                     <h4 className="text-lg font-bold text-white">${((stats?.feesEarned7d || 0) / 1000).toFixed(1)}K</h4>
                   </div>
                 </div>

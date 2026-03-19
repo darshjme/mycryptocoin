@@ -18,13 +18,13 @@ const cryptoPreviews = [
 ];
 
 const recentPayments = [
-  { id: 'PAY-1001', crypto: 'BTC', amount: '0.0125', usd: '$526.50', status: 'confirmed', time: '2 min ago' },
-  { id: 'PAY-1002', crypto: 'ETH', amount: '0.452', usd: '$1,032.00', status: 'pending', time: '5 min ago' },
-  { id: 'PAY-1003', crypto: 'USDT', amount: '250.00', usd: '$250.00', status: 'confirmed', time: '12 min ago' },
-  { id: 'PAY-1004', crypto: 'LTC', amount: '3.5', usd: '$239.75', status: 'confirmed', time: '15 min ago' },
-  { id: 'PAY-1005', crypto: 'BTC', amount: '0.035', usd: '$1,474.50', status: 'processing', time: '20 min ago' },
-  { id: 'PAY-1006', crypto: 'ETH', amount: '1.2', usd: '$2,742.00', status: 'confirmed', time: '25 min ago' },
-  { id: 'PAY-1007', crypto: 'USDT', amount: '500.00', usd: '$500.00', status: 'pending', time: '30 min ago' },
+  { id: 'PAY-1001', crypto: 'BTC', amount: '0.0125', rate: '42,120.00', usdtValue: '526.50', fee: '2.63', netCredited: '523.87', status: 'confirmed', time: '2 min ago' },
+  { id: 'PAY-1002', crypto: 'ETH', amount: '0.452', rate: '2,283.19', usdtValue: '1,032.00', fee: '5.16', netCredited: '1,026.84', status: 'pending', time: '5 min ago' },
+  { id: 'PAY-1003', crypto: 'USDT', amount: '250.00', rate: '1.00', usdtValue: '250.00', fee: '1.25', netCredited: '248.75', status: 'confirmed', time: '12 min ago' },
+  { id: 'PAY-1004', crypto: 'LTC', amount: '3.5', rate: '68.50', usdtValue: '239.75', fee: '1.20', netCredited: '238.55', status: 'confirmed', time: '15 min ago' },
+  { id: 'PAY-1005', crypto: 'BTC', amount: '0.035', rate: '42,128.57', usdtValue: '1,474.50', fee: '7.37', netCredited: '1,467.13', status: 'processing', time: '20 min ago' },
+  { id: 'PAY-1006', crypto: 'ETH', amount: '1.2', rate: '2,285.00', usdtValue: '2,742.00', fee: '13.71', netCredited: '2,728.29', status: 'confirmed', time: '25 min ago' },
+  { id: 'PAY-1007', crypto: 'USDT', amount: '500.00', rate: '1.00', usdtValue: '500.00', fee: '2.50', netCredited: '497.50', status: 'pending', time: '30 min ago' },
 ];
 
 export default function PaymentsPage() {
@@ -85,21 +85,23 @@ export default function PaymentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[rgba(99,102,241,0.06)]">
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Payment ID</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Crypto</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Amount</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">USD Value</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Time</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Payment ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Received</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Rate</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">USDT Value</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Fee (0.5%)</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Net Credited</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Time</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {recentPayments.map((payment, i) => (
                   <tr key={i} className="border-b border-[rgba(99,102,241,0.04)] hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-3">
                       <span className="text-sm font-semibold text-slate-200">{payment.id}</span>
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
                           payment.crypto === 'BTC' ? 'bg-amber-500/20 text-amber-400' :
@@ -110,13 +112,15 @@ export default function PaymentsPage() {
                         }`}>
                           {payment.crypto.slice(0, 2)}
                         </span>
-                        <span className="text-sm text-slate-300">{payment.crypto}</span>
+                        <span className="text-sm text-slate-300">{payment.amount} {payment.crypto}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-sm text-slate-300 font-mono">{payment.amount}</td>
-                    <td className="px-5 py-3 text-sm font-semibold text-slate-200">{payment.usd}</td>
-                    <td className="px-5 py-3 text-xs text-slate-500">{payment.time}</td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-4 py-3 text-sm text-slate-400 font-mono">${payment.rate}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-200">${payment.usdtValue}</td>
+                    <td className="px-4 py-3 text-sm text-red-400/80">${payment.fee}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-emerald-400">${payment.netCredited}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{payment.time}</td>
+                    <td className="px-4 py-3 text-right">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border ${
                         payment.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                         payment.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :

@@ -11,6 +11,19 @@ export enum CryptoNetwork {
   TRON = "TRON",
   LITECOIN = "LITECOIN",
   BSC = "BSC",
+  POLYGON = "POLYGON",
+  AVALANCHE = "AVALANCHE",
+  POLKADOT = "POLKADOT",
+  DOGECOIN = "DOGECOIN",
+  XRPL = "XRPL",
+  MONERO = "MONERO",
+  ZCASH = "ZCASH",
+  BITCOIN_CASH = "BITCOIN_CASH",
+  CARDANO = "CARDANO",
+  ARBITRUM = "ARBITRUM",
+  OPTIMISM = "OPTIMISM",
+  BASE = "BASE",
+  LIGHTNING = "LIGHTNING",
 }
 
 export enum TokenSymbol {
@@ -22,6 +35,23 @@ export enum TokenSymbol {
   USDC = "USDC",
   TRX = "TRX",
   BNB = "BNB",
+  MATIC = "MATIC",
+  AVAX = "AVAX",
+  DOT = "DOT",
+  DOGE = "DOGE",
+  XRP = "XRP",
+  XMR = "XMR",
+  ZEC = "ZEC",
+  BCH = "BCH",
+  ADA = "ADA",
+  ARB = "ARB",
+  OP = "OP",
+  DAI = "DAI",
+  SHIB = "SHIB",
+  PEPE = "PEPE",
+  LINK = "LINK",
+  UNI = "UNI",
+  AAVE = "AAVE",
 }
 
 export enum TransactionStatus {
@@ -76,6 +106,127 @@ export enum WebhookEvent {
   WITHDRAWAL_INITIATED = "withdrawal.initiated",
   WITHDRAWAL_COMPLETED = "withdrawal.completed",
   WITHDRAWAL_FAILED = "withdrawal.failed",
+  REFUND_INITIATED = "refund.initiated",
+  REFUND_COMPLETED = "refund.completed",
+  REFUND_FAILED = "refund.failed",
+  INVOICE_CREATED = "invoice.created",
+  INVOICE_PAID = "invoice.paid",
+  INVOICE_OVERDUE = "invoice.overdue",
+}
+
+// ---------- Invoice ----------
+
+export enum InvoiceStatus {
+  DRAFT = "DRAFT",
+  SENT = "SENT",
+  PAID = "PAID",
+  OVERDUE = "OVERDUE",
+  CANCELLED = "CANCELLED",
+  REFUNDED = "REFUNDED",
+}
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unitPrice: string;
+  amount: string;
+}
+
+export interface Invoice {
+  id: string;
+  merchantId: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  customerName?: string;
+  customerEmail?: string;
+  customerAddress?: string;
+  lineItems: InvoiceLineItem[];
+  subtotal: string;
+  taxRate?: string;
+  taxAmount?: string;
+  total: string;
+  currency: string;
+  dueDate?: Date;
+  paidAt?: Date;
+  paymentId?: string;
+  notes?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ---------- Refund ----------
+
+export enum RefundStatus {
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
+}
+
+export interface Refund {
+  id: string;
+  paymentId: string;
+  merchantId: string;
+  amount: string;
+  currency: string;
+  network?: CryptoNetwork;
+  token?: TokenSymbol;
+  toAddress?: string;
+  txHash?: string;
+  reason?: string;
+  status: RefundStatus;
+  isPartial: boolean;
+  processedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ---------- Discount / Coupon ----------
+
+export enum DiscountType {
+  PERCENTAGE = "PERCENTAGE",
+  FIXED = "FIXED",
+}
+
+export interface Discount {
+  id: string;
+  merchantId: string;
+  code: string;
+  type: DiscountType;
+  value: string;
+  maxUses?: number;
+  usedCount: number;
+  perCustomerLimit?: number;
+  minOrderAmount?: string;
+  applicableCheckoutIds?: string[];
+  expiresAt?: Date;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ---------- Checkout Display Mode ----------
+
+export type CheckoutDisplayMode = "page" | "popup" | "inline" | "hidden";
+
+// ---------- White-Label ----------
+
+export interface WhiteLabelConfig {
+  id: string;
+  merchantId: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  customDomain?: string;
+  customSenderName?: string;
+  customSenderEmail?: string;
+  removeBranding: boolean;
+  customCss?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ---------- Core Interfaces ----------
