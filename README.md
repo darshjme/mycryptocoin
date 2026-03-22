@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
+  <a href="https://github.com/darshjme/mycryptocoin/stargazers"><img src="https://img.shields.io/github/stars/darshjme/mycryptocoin?style=flat-square&logo=github&color=yellow" alt="GitHub Stars" /></a>
 </p>
 
 ---
@@ -264,6 +265,20 @@ Upload `mycryptocoin-gateway` to `wp-content/plugins/`, configure your API key u
   <img src="https://img.shields.io/badge/ethers.js-3C3C3D?style=for-the-badge&logo=ethereum&logoColor=white" alt="ethers.js" />
   <img src="https://img.shields.io/badge/WordPress-21759B?style=for-the-badge&logo=wordpress&logoColor=white" alt="WordPress" />
 </p>
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/my-feature`
+3. Install dependencies: `npm install`
+4. Start dev environment: `docker compose up -d && npm run dev:backend`
+5. Commit your changes: `git commit -m 'feat: add my feature'`
+6. Push to the branch: `git push origin feature/my-feature`
+7. Open a Pull Request
+
+Bug reports and feature requests welcome via [GitHub Issues](https://github.com/darshjme/mycryptocoin/issues).
 
 ---
 
